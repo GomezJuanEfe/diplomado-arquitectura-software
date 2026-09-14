@@ -133,3 +133,189 @@ Estas, son cruciales porque configuran el marco dentro del cual se tomarán toda
 
 **Flexibilidad y escalabilidad:** permite que el sistema se adapte más fácilmente a cambios en los requisitos o en el entorno tecnológico.
 
+# Atributos de calidad
+
+![Atributos de calidad](./atributos%20de%20calidad.png)
+
+Las cuatro flechas son las cuatro dimensiones que, juntas, forman la arquitectura:
+
+**Estructura (abajo):** qué estilo usas — monolito, microservicios, capas.
+
+**Decisiones de arquitectura (izquierda):** reglas duras. "La capa de presentación nunca habla directo con la base de datos."
+
+**Principios de diseño (derecha):** guías flexibles. "Preferimos mensajería asíncrona entre servicios."
+Características de la arquitectura (arriba): las "-ilidades".
+
+Lo que está en el centro es la lista de características, y ahí está la idea importante: las otras tres dimensiones existen para sostener esas características. Eliges microservicios porque necesitas escalabilidad y agilidad, no al revés.
+
+## Características de Arquitectura
+
+Muchas organizaciones definen estas características del software con una variedad de términos, incluidos requisitos no funcionales y atributos de calidad.
+
+Una característica de arquitectura cumple 3 criterios:
+
+- Especifica una consideración de diseño sin dominio
+- Influye en algún aspecto estructural del diseño
+- Es crítico o importante para el éxito de la aplicación
+
+>### Los tres criterios en un caso concreto
+>
+>Imagina una plataforma de venta de entradas para conciertos. Casi todo el tiempo tiene poco tráfico, pero el día que salen a la venta las entradas de un artista grande, en cinco minutos entran cien mil personas.
+>
+>Tomemos **elasticidad** (capacidad de absorber picos bruscos de carga) y pasémosla por los tres filtros:
+>
+>- ¿Es una consideración sin dominio? Sí. Puedes decir "el sistema debe ser elástico" sin mencionar entradas, conciertos ni artistas.
+>- ¿Influye en la estructura? Muchísimo. Te obliga a servicios sin estado, a una cola para serializar las compras, a no guardar la sesión en memoria del servidor, a separar el servicio de compra del resto para escalarlo solo a él.
+>- ¿Es crítica para el éxito? Totalmente. Si el sitio se cae en esos cinco minutos, el negocio no existe.
+>
+>Pasa los tres. Es una característica de arquitectura.
+>
+>### Ahora los casos que fallan
+>
+>Esto es lo que hace útil el modelo, porque los tres filtros existen para dejar cosas fuera.
+>
+>**Falla el primero:** "calcular el IVA del 19% sobre el valor de la entrada". Es dominio puro, un requisito funcional. Cambia el código, no la arquitectura.
+>
+>**Falla el segundo:** "el equipo debe usar nombres de variables en camelCase". No es dominio, pero no mueve una sola pieza de la estructura. Es una convención, no una característica de arquitectura.
+>
+>**Falla el tercero, y este es el interesante:** toma la misma elasticidad y llévala a un sistema de nómina interno que usan doce personas de RR.HH. una vez al mes. Sigue siendo sin dominio. Sigue influyendo en la estructura si decides soportarla. Pero no es crítica para nada, porque ese pico de carga nunca va a ocurrir.
+>
+>Ahí está el valor del tercer criterio. Soportar una característica siempre cuesta: más complejidad, más costo, y casi siempre sacrificas otra cosa. Diseñar esa nómina para elasticidad sería pagar un precio alto a cambio de nada. Es la primera ley de tus notas, aplicada: todo es un trade-off.
+>
+
+![Características de arquitectura](./Caracteristicas%20de%20arquitectura.png)
+
+El triángulo son los tres criterios, uno por lado, y el mensaje de la figura es que los tres deben cumplirse a la vez. Un triángulo se sostiene solo si tiene sus tres lados; quita uno y no hay figura. Eso es todo lo que dice la forma.
+
+Richards y Ford distinguen entre características explícitas, las que sí aparecen escritas en el documento de requisitos, y características implícitas, las que nadie escribe pero el sistema necesita igual. Nadie pone en un requisito "el sistema debe estar disponible" ni "los datos de la tarjeta no deben filtrarse". Se dan por supuestas. Y sin embargo son las que hunden proyectos.
+
+## Características de la Arquitectura: Operacionales
+
+Cómo se comporta el sistema corriendo, en producción. La pregunta de fondo: ¿responde bien, sigue vivo, aguanta la carga? Es lo que le importa al equipo de operaciones a las 3 de la mañana. Otra pregunta que me puedo hacer es ¿puedo medir esto con un cronómetro o un monitor, con el sistema corriendo en producción? Si la respuesta es sí, es operacional.
+
+### Disponibilidad
+
+Tiempo que el sistema debe estar **operativo** (si es 24/7, se requieren medidas para garantizar su rápida recuperación ante fallos).
+
+### Continuidad
+
+Capacidad de **recuperación** ante desastres.
+
+### Rendimiento
+
+Incluye pruebas de estrés, análisis de picos, frecuencia de uso de funciones, capacidad requerida y tiempos de respuesta.
+
+### Recuperabilidad
+
+**Requisitos de continuidad del negocio** (ej.: tiempo máximo para restaurar el sistema tras un desastre). Esto impacta la estrategia de backups y la necesidad de hardware redundante.
+
+### Confiabilidad/Seguridad
+
+Evalúa si el sistema debe ser a **prueba de fallos o es crítico**
+(ej.: afecta vidas humanas o generaría pérdidas financieras significativas).
+
+### Robustez
+
+Capacidad del sistema para manejar errores y condiciones límite durante su ejecución, como caídas de conexión a Internet, cortes de energía o fallos de hardware.
+
+### Escalabilidad
+
+Capacidad del sistema para mantener su rendimiento y operatividad ante el aumento de usuarios o solicitudes.
+
+## Características de la Arquitectura: Estructurales
+
+Tiene que ver con la calidad interna del código y qué tan fácil es trabajar con él. La pregunta: ¿alguien que llega nuevo entiende esto? ¿Puedo cambiarlo sin romper cinco cosas? El usuario final nunca las ve; el equipo de desarrollo las sufre todos los días.
+
+### Configurabilidad
+
+Capacidad que tienen los usuarios finales para modificar fácilmente aspectos de la **configuración del software** mediante interfaces intuitivas.
+
+### Extensibilidad
+
+Grado de importancia para incorporar nuevas funcionalidades al **sistema de manera modular**.
+
+### Capacidad de instalación
+
+Facilidad para **desplegar el sistema** en todas las plataformas requeridas.
+
+### Reutilización
+
+Habilidad para aprovechar componentes comunes en **múltiples productos**.
+
+### Localización
+
+Soporte para múltiples idiomas en pantallas de **entrada/consulta**, informes, caracteres multibyte, así como unidades de medida y monedas locales.
+
+### Mantenibilidad
+
+Facilidad para **implementar cambios** y mejoras en el sistema a lo largo del tiempo.
+
+### Portabilidad
+
+¿Requiere el sistema ejecutarse en múltiples plataformas? (Ejemplo: ¿debe funcionar el frontend tanto con Oracle como con SAP DB?).
+
+### Capacidad de Actualización
+
+Facilidad para migrar rápidamente desde una versión anterior de la aplicación/solución a una versión más reciente, tanto en servidores como en clientes.
+
+## Características del Arquitectura: Transversales (Cross-cutting)
+
+No encajan limpio en las otras dos y atraviesan el sistema entero. No son "una parte" del sistema, son una exigencia que aplica en todas partes a la vez.
+
+### Accesibilidad
+
+Garantizar el acceso a todos los usuarios, incluyendo aquellos con discapacidades como daltonismo o pérdida auditiva.
+
+### Capacidad de archivado
+
+¿Los datos deberán archivarse o eliminarse después de un tiempo determinado? (Ejemplo: cuentas de clientes que deben eliminarse después de tres meses o marcarse como obsoletas y archivarse en una base de datos secundaria para acceso futuro).
+
+### Autenticación
+
+Requisitos de seguridad para verificar la identidad de los usuarios.
+
+### Autorización
+
+Requisitos de seguridad para controlar el acceso a funciones específicas dentro de la aplicación (por caso de uso, subsistema, página web, regla de negocio, nivel de campo, etc).
+
+### Aspectos legales
+
+¿Qué restricciones legislativas afectan al sistema (protección de datos, Sarbanes Oxley, GDPR, etc.)?
+
+¿Qué derechos de reserva requiere la empresa? ¿Existen regulaciones sobre cómo debe construirse o implementarse la aplicación?
+
+### Privacidad
+
+Capacidad de proteger transacciones incluso del personal interno (mediante encriptación que impida el acceso a administradores de bases de datos y arquitectos de red).
+
+### Seguridad
+
+Requieren los datos:
+- ¿Encriptación en la base de datos?
+- ¿Encriptación en comunicaciones internas?
+- ¿Qué protocolos de autenticación se necesitan para acceso remoto?
+
+### Capacidad de soporte
+
+Nivel de asistencia técnica requerido:
+- Complejidad de logs necesarios
+- Herramientas de diagnóstico para depuración
+- Recursos para soluciones de incidencias
+
+### Usabilidad
+
+Consideraciones críticas:
+- Curva de aprendizaje para usuarios
+- Diseño intuitivo centrado en la experiencia del usuario
+- Requisitos ergonómicos (Deben priorizarse como cualquier aspecto arquitectural)
+
+
+## CARACTERÍSTICAS DE ARQUITECTURA: ISO/IEC 25021
+
+###  Elementos de medida de calidad:
+
+Define un conjunto de medidas base y derivadas recomendadas, que están destinadas a ser utilizadas durante todo el ciclo de vida del desarrollo de software. El documento describe un conjunto de medidas que se pueden utilizar como entrada para la medición de la calidad del producto de software o la calidad del software en uso.
+
+![Software Quality Product](./Software%20Quality%20Product.png)
+
+![Características de Arquitectura](./Caracteristicas%20de%20arquitectura_2.png)
