@@ -1,0 +1,23 @@
+{
+  "udp": {
+    "variante": "udp_loopback",
+    "muestras": 90000,
+    "min_ns": 8956.0,
+    "p50_ns": 11357.0,
+    "p99_ns": 40248.0,
+    "p999_ns": 59121.0,
+    "max_ns": 424099.0,
+    "promedio_ns": 12991.89
+  },
+  "shm": {
+    "variante": "shm_busywait",
+    "muestras": 90000,
+    "min_ns": 211.0,
+    "p50_ns": 308.0,
+    "p99_ns": 668.0,
+    "p999_ns": 4240.0,
+    "max_ns": 18320.0,
+    "promedio_ns": 337.37
+  },
+  "udp_python": null
+}

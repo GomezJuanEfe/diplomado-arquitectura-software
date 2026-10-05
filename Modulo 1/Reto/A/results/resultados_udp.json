@@ -1,0 +1,10 @@
+{
+  "variante": "udp_loopback",
+  "muestras": 90000,
+  "min_ns": 8956.00,
+  "p50_ns": 11357.00,
+  "p99_ns": 40248.00,
+  "p999_ns": 59121.00,
+  "max_ns": 424099.00,
+  "promedio_ns": 12991.89
+}

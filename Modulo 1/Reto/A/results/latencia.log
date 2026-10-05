@@ -1,0 +1,18 @@
+==== Variante: udp_loopback ====
+Muestras validas : 90000
+Minimo   (ns)    : 8956.00
+p50      (ns)    : 11357.00
+p99      (ns)    : 40248.00
+p99.9    (ns)    : 59121.00
+Maximo   (ns)    : 424099.00
+Promedio (ns)    : 12991.89
+
+==== Variante: shm_busywait ====
+Muestras validas : 90000
+Minimo   (ns)    : 211.00
+p50      (ns)    : 308.00
+p99      (ns)    : 668.00
+p99.9    (ns)    : 4240.00
+Maximo   (ns)    : 18320.00
+Promedio (ns)    : 337.37
+

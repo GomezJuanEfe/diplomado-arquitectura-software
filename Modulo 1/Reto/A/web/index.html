@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Reto Modulo 1 - Comparacion de latencia</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #171a21;
+    --texto: #e7e9ee;
+    --texto-tenue: #9aa1ad;
+    --borde: #2a2f3a;
+    --color-shm: #4fd1a5;
+    --color-udp: #5b9bd5;
+    --color-fetch: #e0a458;
+    --color-fetch-medido: #d9534f;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 2rem;
+    background: var(--bg);
+    color: var(--texto);
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  h1 { font-size: 1.4rem; margin-bottom: 0.25rem; }
+  p.subtitulo { color: var(--texto-tenue); margin-top: 0; margin-bottom: 2rem; }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--borde);
+    border-radius: 10px;
+    padding: 1.5rem;
+    max-width: 900px;
+    margin-bottom: 1.5rem;
+  }
+  .fila-barra { margin-bottom: 1.4rem; }
+  .etiqueta-barra {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.9rem;
+    margin-bottom: 0.35rem;
+  }
+  .etiqueta-barra .nombre { font-weight: 600; }
+  .etiqueta-barra .valor { color: var(--texto-tenue); font-variant-numeric: tabular-nums; }
+  .pista-barra {
+    background: #0b0d11;
+    border-radius: 6px;
+    height: 26px;
+    overflow: hidden;
+    border: 1px solid var(--borde);
+  }
+  .relleno-barra {
+    height: 100%;
+    border-radius: 6px 0 0 6px;
+    transition: width 0.6s ease-out;
+    min-width: 3px;
+  }
+  .relleno-shm   { background: var(--color-shm); }
+  .relleno-udp   { background: var(--color-udp); }
+  .relleno-fetch { background: var(--color-fetch); }
+  .nota {
+    color: var(--texto-tenue);
+    font-size: 0.85rem;
+    line-height: 1.5;
+  }
+  .estado {
+    font-size: 0.85rem;
+    color: var(--texto-tenue);
+    margin-bottom: 1rem;
+  }
+  code {
+    background: #0b0d11;
+    padding: 0.1rem 0.35rem;
+    border-radius: 4px;
+    border: 1px solid var(--borde);
+  }
+  table { border-collapse: collapse; width: 100%; font-size: 0.85rem; margin-top: 0.5rem; }
+  th, td { text-align: right; padding: 0.35rem 0.6rem; border-bottom: 1px solid var(--borde); }
+  th:first-child, td:first-child { text-align: left; }
+  th { color: var(--texto-tenue); font-weight: 600; }
+</style>
+</head>
+<body>
+
+<h1>Reto Modulo 1 &mdash; Latencia minima: estimulo &rarr; respuesta</h1>
+<p class="subtitulo">
+  Plano de control (esta pagina, fuera de la medicion) mostrando resultados
+  del plano de datos (C, misma maquina, sin HTTP ni JSON en el camino
+  critico).
+</p>
+
+<div class="panel">
+  <div id="estado" class="estado">Cargando resultados...</div>
+
+  <div class="fila-barra">
+    <div class="etiqueta-barra">
+      <span class="nombre">Memoria compartida (espera activa)</span>
+      <span class="valor" id="valor-shm">&mdash;</span>
+    </div>
+    <div class="pista-barra"><div class="relleno-barra relleno-shm" id="barra-shm" style="width:0%"></div></div>
+  </div>
+
+  <div class="fila-barra">
+    <div class="etiqueta-barra">
+      <span class="nombre">UDP sobre loopback (127.0.0.1)</span>
+      <span class="valor" id="valor-udp">&mdash;</span>
+    </div>
+    <div class="pista-barra"><div class="relleno-barra relleno-udp" id="barra-udp" style="width:0%"></div></div>
+  </div>
+
+  <div class="fila-barra">
+    <div class="etiqueta-barra">
+      <span class="nombre">fetch() del navegador a localhost (grupo de control)</span>
+      <span class="valor" id="valor-fetch">midiendo...</span>
+    </div>
+    <div class="pista-barra"><div class="relleno-barra relleno-fetch" id="barra-fetch" style="width:0%"></div></div>
+  </div>
+
+  <p class="nota">
+    Las barras usan escala LOGARITMICA (no lineal), porque las tres
+    tecnicas difieren en varios ordenes de magnitud: si se usara escala
+    lineal, memoria compartida y UDP se verian como una linea invisible al
+    lado de fetch(). El ancho de cada barra representa
+    log10(latencia en nanosegundos).
+  </p>
+
+  <table id="tabla-detalle">
+    <thead>
+      <tr><th>Variante</th><th>p50</th><th>p99</th><th>p99.9</th><th>min</th><th>max</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<div class="panel">
+  <p class="nota">
+    <strong>Por que fetch() es tan distinto:</strong> el "grupo de control"
+    no es injusto, es el punto de comparacion. fetch() pasa por el
+    interprete de JavaScript, el stack HTTP del navegador, el bucle de
+    eventos, TCP (con su propio handshake y control de flujo) y recien
+    despues llega al mismo localhost. Cada una de esas capas agrega
+    latencia que ni UDP crudo ni la memoria compartida tienen que pagar.
+    Esa es, en una sola pantalla, la diferencia entre un plano de control
+    (comodo, con HTTP y JSON) y un plano de datos critico (minimalista,
+    a proposito).
+  </p>
+</div>
+
+<script>
+"use strict";
+
+// Formatea nanosegundos en la unidad mas legible (ns, us o ms).
+function formatearNs(ns) {
+  if (ns === null || ns === undefined || Number.isNaN(ns)) return "sin datos";
+  if (ns < 1000) return ns.toFixed(1) + " ns";
+  if (ns < 1_000_000) return (ns / 1000).toFixed(2) + " µs";
+  return (ns / 1_000_000).toFixed(2) + " ms";
+}
+
+// Escala logaritmica: convierte una latencia en nanosegundos a un
+// porcentaje de ancho de barra, entre un piso y un techo razonables
+// para que hasta el valor mas chico (memoria compartida, ~200 ns) se
+// vea como una barra visible, y el mas grande no se salga del panel.
+function anchoLogPorcentaje(ns, minEsperadoNs, maxEsperadoNs) {
+  if (!ns || ns <= 0) return 0;
+  const logMin = Math.log10(minEsperadoNs);
+  const logMax = Math.log10(maxEsperadoNs);
+  const logValor = Math.log10(ns);
+  let fraccion = (logValor - logMin) / (logMax - logMin);
+  fraccion = Math.max(0.02, Math.min(1, fraccion));
+  return (fraccion * 100).toFixed(1);
+}
+
+async function medirFetchControl() {
+  // Medicion INFORMATIVA, no un benchmark riguroso como el de C: unas
+  // pocas decenas de fetch() secuenciales a /api/ping, cronometrados con
+  // performance.now() (reloj monotonico de alta resolucion del propio
+  // navegador, el equivalente en JS de clock_gettime(CLOCK_MONOTONIC)).
+  const ITERACIONES = 200;
+  const CALENTAMIENTO = 5;
+  const muestrasMs = [];
+
+  for (let i = 0; i < ITERACIONES; i++) {
+    const t0 = performance.now();
+    await fetch("/api/ping", { cache: "no-store" });
+    const t1 = performance.now();
+    if (i >= CALENTAMIENTO) muestrasMs.push(t1 - t0);
+  }
+
+  muestrasMs.sort((a, b) => a - b);
+  const mediana = muestrasMs[Math.floor(muestrasMs.length / 2)];
+  const minimo = muestrasMs[0];
+  const maximo = muestrasMs[muestrasMs.length - 1];
+
+  return {
+    p50_ns: mediana * 1_000_000,
+    min_ns: minimo * 1_000_000,
+    max_ns: maximo * 1_000_000,
+    muestras: muestrasMs.length,
+  };
+}
+
+function agregarFilaTabla(nombre, s) {
+  const tbody = document.querySelector("#tabla-detalle tbody");
+  const tr = document.createElement("tr");
+  if (!s) {
+    tr.innerHTML = `<td>${nombre}</td><td colspan="5">sin datos (no se corrio esta variante todavia)</td>`;
+  } else {
+    tr.innerHTML = `
+      <td>${nombre}</td>
+      <td>${formatearNs(s.p50_ns)}</td>
+      <td>${formatearNs(s.p99_ns ?? null)}</td>
+      <td>${formatearNs(s.p999_ns ?? null)}</td>
+      <td>${formatearNs(s.min_ns)}</td>
+      <td>${formatearNs(s.max_ns)}</td>`;
+  }
+  tbody.appendChild(tr);
+}
+
+async function iniciar() {
+  const estado = document.getElementById("estado");
+
+  const [resultados, fetchControl] = await Promise.all([
+    fetch("/api/resultados", { cache: "no-store" }).then(r => r.json()),
+    medirFetchControl(),
+  ]);
+
+  const shm = resultados.shm;
+  const udp = resultados.udp;
+
+  // Rango log fijo entre 100 ns y 100 ms cubre comodamente las tres
+  // magnitudes tipicas: shm (~0.2-1 us), UDP (~20-40 us), fetch (~0.2-5 ms).
+  const PISO_NS = 100;
+  const TECHO_NS = 100_000_000;
+
+  if (shm) {
+    document.getElementById("barra-shm").style.width = anchoLogPorcentaje(shm.p50_ns, PISO_NS, TECHO_NS) + "%";
+    document.getElementById("valor-shm").textContent = formatearNs(shm.p50_ns) + " (p50)";
+  } else {
+    document.getElementById("valor-shm").textContent = "sin datos (corre: make run-shm)";
+  }
+
+  if (udp) {
+    document.getElementById("barra-udp").style.width = anchoLogPorcentaje(udp.p50_ns, PISO_NS, TECHO_NS) + "%";
+    document.getElementById("valor-udp").textContent = formatearNs(udp.p50_ns) + " (p50)";
+  } else {
+    document.getElementById("valor-udp").textContent = "sin datos (corre: make run-udp)";
+  }
+
+  document.getElementById("barra-fetch").style.width = anchoLogPorcentaje(fetchControl.p50_ns, PISO_NS, TECHO_NS) + "%";
+  document.getElementById("valor-fetch").textContent = formatearNs(fetchControl.p50_ns) + " (mediana, " + fetchControl.muestras + " muestras)";
+
+  agregarFilaTabla("Memoria compartida (C)", shm);
+  agregarFilaTabla("UDP loopback (C)", udp);
+  if (resultados.udp_python) agregarFilaTabla("UDP loopback (Python, respaldo)", resultados.udp_python);
+  agregarFilaTabla("fetch() navegador (control)", fetchControl);
+
+  const partes = [];
+  if (shm) partes.push("shm cargado");
+  if (udp) partes.push("udp cargado");
+  estado.textContent = partes.length
+    ? "Datos: " + partes.join(", ") + ". Grupo de control medido en vivo en esta pagina."
+    : "No se encontraron resultados en results/. Corre 'make run-udp' y 'make run-shm' primero.";
+}
+
+iniciar().catch(err => {
+  document.getElementById("estado").textContent = "Error cargando datos: " + err;
+  console.error(err);
+});
+</script>
+
+</body>
+</html>
