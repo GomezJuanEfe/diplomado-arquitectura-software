@@ -156,28 +156,9 @@ Algunas políticas de programación:
 
 El patrón de malla de servicios se utiliza en arquitecturas de microservicios. La característica principal de la malla es un *sidecar*, una especie de proxy que acompaña a cada microservicio y que brinda capacidades ampliamente útiles para abordar problemas independientes de la aplicación, como las comunicaciones entre servicios, el monitoreo y la seguridad. Un sidecar se ejecuta junto con cada microservicio y maneja toda la comunicación y coordinación entre servicios. Se despliegan juntos, lo que reduce la latencia debida a la red y, por lo tanto, aumenta el rendimiento. Este enfoque permite a los desarrolladores separar la funcionalidad (la lógica de negocio central) del microservicio de la implementación, la gestión y el mantenimiento de aspectos transversales, como la autenticación y la autorización, el descubrimiento de servicios, el balanceo de carga, el cifrado y la observabilidad.
 
-```mermaid
-flowchart TB
-    subgraph Default["Default web service API interaction"]
-        direction LR
-        S1[Service] <-- "request / response" --> S2[Service]
-    end
+![service mesh](./service%20mesh.png)
 
-    subgraph Mesh["Service mesh architecture"]
-        direction TB
-        subgraph P1[" "]
-            A1[Service] --- SC1[Sidecar]
-        end
-        subgraph P2[" "]
-            A2[Service] --- SC2[Sidecar]
-        end
-        SC1 <-- "app data" --> SC2
-        SC1 <-. "exchange policy<br/>and telemetry" .-> CP[Control plane]
-        SC2 <-. "exchange policy<br/>and telemetry" .-> CP
-    end
-```
-
-Fuente: TechTarget – Service Mesh
+[Fuente: TechTarget – Service Mesh](https://www.techtarget.com/it-infrastructure/definition/What-is-a-service-mesh)
 
 **Beneficios**
 
@@ -219,12 +200,9 @@ Fuente: *Software Architecture in Practice, 4th Edition*
 
 El patrón de limitación es un empaquetamiento de la táctica de gestión de solicitudes de trabajo. Se utiliza para limitar el acceso a algún recurso o servicio importante. En este patrón, normalmente hay un intermediario, un regulador (*throttler*), que supervisa las solicitudes al servicio y determina si se puede atender una solicitud entrante.
 
-```mermaid
-flowchart LR
-    C[Client] -- "solicitudes en espera<br/>(buffer del throttle)" --> T[Throttle] -- "solicitudes a ritmo controlado" --> P[Target Process]
-```
+![Throttling Pattern](./Throttling%20Pattern.png)
 
-Fuente: RedHat – Understanding Throttling Architecture Pattern
+[Fuente: RedHat – Understanding Throttling Architecture Pattern](https://www.redhat.com/en/blog/pros-and-cons-throttling)
 
 **Beneficios**
 
@@ -248,46 +226,15 @@ El patrón map-reduce tiene tres partes:
 
 **Ejemplo: conteo de letras**
 
-```mermaid
-flowchart LR
-    IN["<b>INPUT</b><br/>XBB<br/>CBA<br/>XAC"]
+![Map Reduce](./Map%20Reduce.png)
 
-    IN --> S1["XBB"]
-    IN --> S2["CBA"]
-    IN --> S3["XAC"]
-
-    S1 --> M1["X,1<br/>B,1<br/>B,1"]
-    S2 --> M2["C,1<br/>B,1<br/>A,1"]
-    S3 --> M3["X,1<br/>A,1<br/>C,1"]
-
-    M1 & M2 & M3 --> CA["A,1<br/>A,1"]
-    M1 & M2 --> CB["B,1<br/>B,1<br/>B,1"]
-    M2 & M3 --> CC["C,1<br/>C,1"]
-    M1 & M3 --> CX["X,1<br/>X,1"]
-
-    CA & CB & CC & CX --> R["<b>REDUCE</b><br/>A,2<br/>B,3<br/>C,2<br/>X,2"]
-```
-
-Etapas: **Input → Split → Map → Combine → Partition → Reduce**
+[Fuente: Map Reduce 101 - Python Implementation (Multi Threading)](https://vipanchikatthula.github.io/post/mapper-reducer-implementation/)
 
 **Ejemplo: total de órdenes por cliente (MongoDB)**
 
-```mermaid
-flowchart LR
-    O["<b>orders</b><br/>{cust_id: A123, amount: 500, status: A}<br/>{cust_id: A123, amount: 250, status: A}<br/>{cust_id: B212, amount: 200, status: A}<br/>{cust_id: A123, amount: 300, status: D}"]
-    Q["<b>query</b> status = A<br/>{A123, 500}<br/>{A123, 250}<br/>{B212, 200}"]
-    M1["A123: [500, 250]"]
-    M2["B212: 200"]
-    T["<b>order_totals</b><br/>{_id: A123, value: 750}<br/>{_id: B212, value: 200}"]
+![map-reduce operation](./map-reduce%20operation.png)
 
-    O -- query --> Q
-    Q -- map --> M1
-    Q -- map --> M2
-    M1 -- reduce --> T
-    M2 --> T
-```
-
-Fuente: MongoDB Manual – Map Reduce
+[Fuente: MongoDB Manual – Map Reduce](https://www.mongodb.com/docs/manual/core/map-reduce/)
 
 **Beneficios**
 
@@ -301,6 +248,8 @@ Fuente: MongoDB Manual – Map Reduce
 - Las operaciones que requieren múltiples reducciones son complejas de orquestar.
 
 # Tipos de pruebas de performance
+
+![Tipos Prueba de Performance](./Tipos%20Prueba%20de%20Performance.png)
 
 | Tipo de prueba | Objetivo | Perfil de carga |
 |---|---|---|

@@ -122,6 +122,9 @@ Un archivo o consola que muestre claramente los logs de:
 
 ## API Gateway
 
+![AWS Screenshot](./AWS%20-%20screenshot.png)
+
+
 Configuración del *stage* `prod`:
 
 | Parámetro | Valor |
