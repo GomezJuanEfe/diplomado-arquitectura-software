@@ -120,3 +120,84 @@ La concurrencia ocurre cada vez que su sistema **crea un nuevo subproceso**, por
 - Bound Queue Sizes
 - Schedule Resources
 
+### Seguridad (SECURITY)
+
+# Seguridad
+
+> Resumen del video del diplomado sobre el atributo de calidad **seguridad**.
+
+## Definición
+
+La **seguridad** es la capacidad que tiene un sistema para proteger los datos y la información contra accesos no autorizados, al mismo tiempo que permite el acceso a quienes sí están autorizados.
+
+Un **ataque** es un intento de vulnerar esa protección. Puede tomar distintas formas:
+
+- Intentar leer información sin permiso.
+- Intentar modificar información sin permiso.
+- Bloquear el acceso a usuarios legítimos, como en los ataques de **denegación de servicio (DoS)**.
+
+## Los tres pilares de la seguridad (CIA)
+
+| Pilar | Qué significa | Ejemplo |
+|---|---|---|
+| **Confidencialidad** (*Confidentiality*) | La información se mantiene fuera del alcance de personas no autorizadas. | Un atacante no debería poder acceder a tu declaración de impuestos guardada en un sistema gubernamental. |
+| **Integridad** (*Integrity*) | La información no es alterada por personas no autorizadas. | La nota que te asignó tu profesor se mantiene igual hasta que tú la ves. |
+| **Disponibilidad** (*Availability*) | El sistema está activo y disponible para los usuarios legítimos cuando lo necesitan. | Compras un libro en línea y el sitio no se cae por un ataque. |
+
+## Privacidad
+
+Muy relacionada con la seguridad está la **privacidad**, que ha cobrado enorme importancia en los últimos años. Normativas como el **Reglamento General de Protección de Datos (GDPR)** en Europa, y otras similares en el mundo, buscan proteger la **información de identificación personal (PII, *Personally Identifiable Information*)**.
+
+Lograr la privacidad consiste en limitar el acceso a la información, lo que implica decidir:
+
+- **Qué** información debe tener acceso limitado.
+- **A quién** se le debe permitir el acceso.
+
+La información que debe mantenerse privada es la PII. Según el **NIST** (Instituto Nacional de Estándares y Tecnología de EE. UU.), la PII es cualquier información que pueda identificar a una persona, por ejemplo:
+
+- Nombre
+- Número de seguro social (o documento de identidad)
+- Fecha de nacimiento
+- Información médica, educativa o financiera
+
+## Ejemplo de escenario
+
+> Un empleado descontento, desde una ubicación remota, intenta modificar la tabla de tasas de pago del sistema durante operaciones normales. El intento es detectado a tiempo, el sistema registra la actividad y los datos correctos se restauran en un día.
+
+Este tipo de situación muestra por qué la seguridad no es solo una opción, sino una necesidad.
+
+## Analogía: la seguridad física de un edificio
+
+Una forma útil de visualizar la seguridad en sistemas es compararla con la seguridad física de un edificio:
+
+| Seguridad física | Qué hace |
+|---|---|
+| Vallas y puntos de control | Limitan el acceso a las instalaciones. |
+| Insignias para visitantes legítimos | Permiten detectar intrusos. |
+| Guardias armados | Disuaden a posibles atacantes. |
+| Cierre automático de puertas | Permiten reaccionar ante una intrusión. |
+| Copias de seguridad fuera del sitio | Permiten recuperarse después de un incidente. |
+
+Lo mismo debe aplicarse al software.
+
+## Categorías de tácticas de seguridad
+
+A partir de esta analogía se desprenden cuatro grandes categorías de tácticas que se pueden aplicar en la arquitectura de software:
+
+```mermaid
+graph TD
+    A[Tácticas de seguridad] --> B[Detectar ataques]
+    A --> C[Resistir ataques]
+    A --> D[Reaccionar a ataques]
+    A --> E[Recuperarse de ataques]
+```
+
+- **Detectar:** identificar comportamientos sospechosos o accesos indebidos.
+- **Resistir:** proteger el sistema para que no pueda ser vulnerado fácilmente.
+- **Reaccionar:** tomar medidas cuando ocurre una intrusión.
+- **Recuperarse:** restaurar el sistema a un estado seguro después de un ataque.
+
+## Para profundizar
+
+- El detalle de cada táctica de seguridad está en la presentación **Tácticas Seguridad** (sección de recursos complementarios del diplomado).
+- Referencia esencial: Len Bass, Paul Clements, Rick Kazman. *Software Architecture in Practice*. 4th Edition. SEI / Addison-Wesley, 2022.
