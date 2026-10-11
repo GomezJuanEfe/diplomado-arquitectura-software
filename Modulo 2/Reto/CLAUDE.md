@@ -8,10 +8,13 @@ Solución al "Reto 2" del Diplomado de Cloud Computing: un sistema de alerta tem
 vehicular. El enunciado completo está en [Instrucciones.md](./Instrucciones.md) — léelo antes de
 proponer arquitectura, ya que define la rúbrica de evaluación y los formatos exactos de payload/correo.
 
-**Estado actual: no hay código fuente todavía.** El repo solo contiene el enunciado, una plantilla de
-ADR y la configuración de permisos de Claude Code. No existen build/lint/test commands porque no se ha
-elegido ni implementado la arquitectura. No inventes comandos; cuando se agregue código (IaC, funciones
-Lambda, scripts de despliegue, k6), documenta aquí cómo desplegar, probar y ver logs.
+**Estado actual:** reto completo y verificado de punta a punta en AWS (`sa-east-1`, cuenta
+`270278216472`) vía AWS CLI — API Gateway REST (`reto2-fleet-api`) → Lambda
+(`reto2-emergency-processor`) → Gmail API. La prueba de carga con `k6-script.js` (1000 peticiones en
+27.8s, 100% status 200) dio un tiempo último-envío-k6 → `EMAIL_SENT` de **~1.2s**, dentro del rango de
+puntaje máximo de la rúbrica (<15s). No hay IaC ni pipeline de CI/CD — el despliegue es una serie de
+comandos `aws` ejecutados manualmente y documentados abajo; no asumas que existe un script de
+despliegue automatizado salvo que se agregue explícitamente.
 
 ## El problema a resolver (resumen operativo)
 
@@ -48,7 +51,11 @@ No dupliques la justificación de una decisión en el código o en otro document
 única de verdad sobre el "por qué".
 
 ### Decisiones tomadas
-(Vacío. Cada decisión vive en docs/decisiones/ y se enlaza aquí a medida que se tomen.)
+- [0001 – Arquitectura de ingesta y notificación de emergencias](./docs/decisiones/0001-arquitectura-ingesta-y-notificacion.md):
+  API Gateway REST → Lambda Python → Gmail API (OAuth2), despliegue manual vía AWS CLI, sin
+  dependencias externas en el código de la Lambda. Nota de implementación dentro del ADR: la
+  concurrencia quedó **sin reservar** porque el límite de cuenta en `sa-east-1` ya es 10 (no se puede
+  reservar 10 sin bajar el "unreserved" de la cuenta por debajo del mínimo exigido por AWS).
 
 ## Permisos de Claude Code en este proyecto
 
@@ -60,4 +67,69 @@ No dupliques la justificación de una decisión en el código o en otro document
   estudiante, así que no asumas aprobación implícita más allá del alcance pedido.
 
 ## Comandos
-(Se llenan cuando existan: desplegar, probar con k6, ver logs.)
+
+### Recursos AWS desplegados (`sa-east-1`, cuenta `270278216472`)
+
+- Rol IAM: `reto2-lambda-role` (trust `lambda.amazonaws.com` + policy administrada
+  `AWSLambdaBasicExecutionRole`).
+- Lambda: `reto2-emergency-processor` (runtime `python3.13`, handler `handler.lambda_handler`, sin
+  concurrencia reservada — ver nota en ADR 0001).
+- API Gateway REST: `reto2-fleet-api`, recurso `POST /events`, integración `AWS_PROXY`, stage `prod`
+  con throttling `rate=15` / `burst=2000` aplicado vía `update-stage` (path `/*/*/throttling/...`).
+- URL de ingesta: `https://{API_ID}.execute-api.sa-east-1.amazonaws.com/prod/events` (el `API_ID` es
+  el que devuelve `aws apigateway get-rest-apis --region sa-east-1` filtrando por `reto2-fleet-api`;
+  `k6-script.js` sí trae esta URL hardcodeada por simplicidad — si se recrea el API Gateway y cambia
+  el `API_ID`, hay que actualizarla ahí a mano).
+
+### Generar el `refresh_token` de Gmail (una sola vez, local, nunca en Lambda)
+
+`python scripts/generate_gmail_refresh_token.py` — abre el navegador para el consentimiento OAuth2 y
+deja el refresh token para copiar como variable de entorno `GMAIL_REFRESH_TOKEN` en la Lambda.
+
+### Actualizar las variables de entorno de la Lambda (hoy son placeholders `PENDIENTE`)
+
+```bash
+aws lambda update-function-configuration \
+  --region sa-east-1 \
+  --function-name reto2-emergency-processor \
+  --environment "Variables={GMAIL_CLIENT_ID=...,GMAIL_CLIENT_SECRET=...,GMAIL_REFRESH_TOKEN=...,GMAIL_TO=gomezjuanefe@gmail.com}"
+```
+
+### Redesplegar código tras editar `lambda/handler.py`
+
+```bash
+cd lambda && zip -j /tmp/lambda.zip handler.py && cd ..
+aws lambda update-function-code \
+  --region sa-east-1 \
+  --function-name reto2-emergency-processor \
+  --zip-file fileb:///tmp/lambda.zip
+```
+
+### Probar manualmente (sin k6)
+
+```bash
+URL="https://<API_ID>.execute-api.sa-east-1.amazonaws.com/prod/events"
+curl -X POST "$URL" -H "Content-Type: application/json" \
+  -d '{"type":"Emergency","vehicle_plate":"XYZ999","status":"accidente"}'
+```
+
+### Ver logs (con timestamp de `EMERGENCY_RECEIVED` / `EMAIL_SENT` / `EMAIL_SEND_FAILED`)
+
+```bash
+aws logs tail /aws/lambda/reto2-emergency-processor --region sa-east-1 --since 10m
+```
+
+### Correr la prueba de carga con k6
+
+`k6` no viene preinstalado en este entorno; se instaló como binario de usuario en `~/.local/bin/k6`
+(descargado de los releases de GitHub de `grafana/k6`, sin tocar paquetes del sistema). Para correrlo:
+
+```bash
+export PATH="$HOME/.local/bin:$PATH"
+k6 run k6-script.js
+```
+
+El script (`k6-script.js`, raíz del proyecto) manda 1000 peticiones con 10 VUs en ~28s; solo la última
+(`globalIndex=999`) es `"Emergency"`, el resto `"Position"`. Último resultado medido: 1000/1000 con
+status 200, `EMERGENCY_RECEIVED` → `EMAIL_SENT` en ~1.2s (ver timestamps reales con el comando de logs
+de arriba, filtrando justo después de correr k6).
