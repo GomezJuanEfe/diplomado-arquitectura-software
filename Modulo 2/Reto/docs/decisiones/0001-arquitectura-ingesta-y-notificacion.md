@@ -50,6 +50,60 @@ Se elige la opción 1:
   modos responde `200` al API Gateway — no se quiere que una falla de Gmail tumbe el contrato HTTP
   que valida k6 (`is status 200`).
 
+## Diagrama de arquitectura
+
+```mermaid
+flowchart TD
+    V["Vehículos (k6 / flota real)"] -->|"POST /events"| AG["API Gateway REST\nstage prod · rate 15 req/s · burst 2000"]
+    AG -->|"integración AWS_PROXY"| L["Lambda reto2-emergency-processor\n(sin concurrencia reservada, ver nota abajo)"]
+    L -->|"type == Position"| ACK["Responde 200\n(sin acción adicional)"]
+    L -->|"type == Emergency"| LOG1["print EMERGENCY_RECEIVED\ncon timestamp UTC"]
+    LOG1 --> GM["Gmail API\nOAuth2 (refresh_token)"]
+    GM --> LOG2["print EMAIL_SENT / EMAIL_SEND_FAILED\ncon timestamp UTC"]
+    LOG2 --> INBOX["Gmail personal\ngomezjuanefe@gmail.com"]
+    L -.->|"stdout"| CW["CloudWatch Logs\n(captura todos los print)"]
+```
+
+El camino crítico para la nota de la rúbrica es `V → AG → L → LOG1 → GM → LOG2`: todo síncrono, en una
+sola invocación, sin colas intermedias — es la traducción directa del atributo de calidad priorizado
+(latencia).
+
+## Tácticas de arquitectura
+
+Tácticas aplicadas, agrupadas por el atributo de calidad que atienden (catálogo de Bass/Clements/Kazman):
+
+**Rendimiento (atributo priorizado)**
+
+- *Reducir el overhead computacional:* `lambda/handler.py` usa solo la librería estándar de Python
+  (`urllib`, `email.mime`, `base64`, `json`) — sin SDKs ni dependencias que empaquetar, lo que
+  minimiza el tamaño del paquete y el tiempo de cold start.
+- *Minimizar el número de intermediarios:* detección y notificación ocurren en la misma invocación
+  síncrona de Lambda, sin colas (SQS/SNS) ni pasos asíncronos entre recibir el `Emergency` y llamar a
+  Gmail API — cada paso intermedio adicional sumaría latencia al camino crítico.
+- *Controlar la demanda de recursos:* el throttling de API Gateway (`rate=15`, `burst=2000`) acota la
+  tasa de entrada para que la Lambda nunca reciba más carga de la que puede atender de forma
+  consistente, evitando colas de espera que degradarían la latencia por petición.
+- *Gestionar recursos (bound resource usage):* la intención arquitectónica es acotar el número de
+  ejecuciones paralelas de la Lambda (reservar concurrencia) para que el procesamiento no escale sin
+  control; en esta cuenta terminó dependiendo del límite de cuenta en vez de una reserva explícita —
+  ver la nota de implementación más abajo.
+
+**Disponibilidad**
+
+- *Ignorar comportamiento defectuoso (ignore faulty behavior):* el `try/except` alrededor de
+  `_send_alert_email` evita que una falla de Gmail (timeout, 401, etc.) tumbe la respuesta HTTP — la
+  función siempre devuelve `200`, preservando el contrato que valida k6 (`is status 200`) aunque la
+  notificación falle.
+- *Detección de fallos vía logging explícito:* cada fallo de envío se loguea como
+  `EMAIL_SEND_FAILED` con el error y el timestamp exacto, permitiendo diagnosticar sin necesitar que
+  la petición HTTP falle ni reintentar automáticamente (fuera de alcance de este reto).
+
+**Modificabilidad**
+
+- *Encapsular:* toda la lógica de Gmail OAuth2 vive en dos funciones separadas del handler principal
+  (`_get_access_token`, `_send_alert_email`); cambiar de proveedor de notificación (ej. a SES) solo
+  tocaría esas dos funciones, no la lógica de detección del evento `Emergency`.
+
 ## Consecuencias (trade-offs)
 
 - **Gana:** latencia mínima (todo síncrono en una sola invocación, sin colas intermedias), cero
