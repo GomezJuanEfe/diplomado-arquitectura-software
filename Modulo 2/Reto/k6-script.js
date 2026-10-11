@@ -1,0 +1,60 @@
+import http from 'k6/http';
+import { check, sleep } from 'k6' ;
+
+export const options = {
+  vus: 10,           // 10 usuarios virtuales
+  iterations: 1000,  // Total de peticiones
+  duration: '30s',   // Tiempo total
+};
+
+// Generar placa de vehículo
+function generateVehiclePlate() {
+  const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const numbers = '0123456789';
+  return `${letters.charAt(Math.floor(Math.random() * letters.length))}${letters.charAt(Math.floor(Math.random() * letters.length))}${letters.charAt(Math.floor(Math.random() * letters.length))}-${numbers.charAt(Math.floor(Math.random() * numbers.length))}${numbers.charAt(Math.floor(Math.random() * numbers.length))}${numbers.charAt(Math.floor(Math.random() * numbers.length))}`;
+}
+
+// Generar coordenadas
+function generateCoordinates() {
+  return {
+    latitude: (Math.random() * 180 - 90).toFixed(6),
+    longitude: (Math.random() * 360 - 180).toFixed(6),
+  };
+}
+
+// Generar tipo de mensaje usando índice global calculado
+function generateType(globalIndex) {
+  return globalIndex < 999 ? 'Position' : 'Emergency';
+}
+
+// Función principal
+export default function () {
+  // Cálculo del índice global
+  const globalIndex = (__VU - 1) * (options.iterations / options.vus) + __ITER;
+  
+  const type = generateType(globalIndex);
+  const payload = JSON.stringify({
+    type: type,
+    vehicle_plate: generateVehiclePlate(),
+    coordinates: generateCoordinates(),
+    status: 'OK',
+  });
+
+  const headers = { 'Content-Type': 'application/json' };
+
+  const res = http.post('https://mtm01dt47e.execute-api.sa-east-1.amazonaws.com/prod/events', payload, { headers });
+
+  console.log(JSON.stringify({
+    globalIndex,
+    type: type,
+    timestamp: new Date().toISOString(),
+    status: res.status,
+    duration: res.timings.duration
+  }));
+
+  check(res, {
+    'is status 200': (r) => r.status === 200,
+  });
+
+  sleep(0.1);
+}
