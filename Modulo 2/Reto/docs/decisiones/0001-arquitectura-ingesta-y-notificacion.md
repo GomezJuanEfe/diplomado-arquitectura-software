@@ -70,39 +70,58 @@ sola invocación, sin colas intermedias — es la traducción directa del atribu
 
 ## Tácticas de arquitectura
 
-Tácticas aplicadas, agrupadas por el atributo de calidad que atienden (catálogo de Bass/Clements/Kazman):
+Tácticas aplicadas, nombradas exactamente como en la taxonomía de *Software Architecture in Practice*
+(Bass/Clements/Kazman) cubierta en el Módulo 2 (`Anexo: Tacticas Desempeño.md` y
+`Anexo: Tacticas Disponibilidad.md`), agrupadas por el atributo de calidad que atienden.
 
-**Rendimiento (atributo priorizado)**
+**Rendimiento — Control Resource Demand (atributo priorizado)**
 
-- *Reducir el overhead computacional:* `lambda/handler.py` usa solo la librería estándar de Python
-  (`urllib`, `email.mime`, `base64`, `json`) — sin SDKs ni dependencias que empaquetar, lo que
-  minimiza el tamaño del paquete y el tiempo de cold start.
-- *Minimizar el número de intermediarios:* detección y notificación ocurren en la misma invocación
-  síncrona de Lambda, sin colas (SQS/SNS) ni pasos asíncronos entre recibir el `Emergency` y llamar a
-  Gmail API — cada paso intermedio adicional sumaría latencia al camino crítico.
-- *Controlar la demanda de recursos:* el throttling de API Gateway (`rate=15`, `burst=2000`) acota la
-  tasa de entrada para que la Lambda nunca reciba más carga de la que puede atender de forma
-  consistente, evitando colas de espera que degradarían la latencia por petición.
-- *Gestionar recursos (bound resource usage):* la intención arquitectónica es acotar el número de
-  ejecuciones paralelas de la Lambda (reservar concurrencia) para que el procesamiento no escale sin
-  control; en esta cuenta terminó dependiendo del límite de cuenta en vez de una reserva explícita —
-  ver la nota de implementación más abajo.
+- *Manage Work Requests* ("gestionar la llegada de eventos" vía un SLA que fija la tasa máxima): el
+  throttling de API Gateway (`rate=15`, `burst=2000`) es exactamente esto — el propio anexo lo empaqueta
+  como el **patrón Throttling**. Acota la tasa de entrada para que la Lambda nunca reciba más carga de
+  la que puede atender de forma consistente.
+- *Reduce Computational Overhead* ("reducir la indirección"): `lambda/handler.py` usa solo la librería
+  estándar de Python (`urllib`, `email.mime`, `base64`, `json`) — sin SDKs ni dependencias externas que
+  empaquetar, lo que minimiza el tamaño del paquete y el tiempo de cold start.
+- *Bound Execution Times*: el `timeout=10s` configurado en la Lambda acota el tiempo máximo de
+  ejecución por invocación.
 
-**Disponibilidad**
+**Rendimiento — Manage Resources**
 
-- *Ignorar comportamiento defectuoso (ignore faulty behavior):* el `try/except` alrededor de
-  `_send_alert_email` evita que una falla de Gmail (timeout, 401, etc.) tumbe la respuesta HTTP — la
-  función siempre devuelve `200`, preservando el contrato que valida k6 (`is status 200`) aunque la
-  notificación falle.
-- *Detección de fallos vía logging explícito:* cada fallo de envío se loguea como
-  `EMAIL_SEND_FAILED` con el error y el timestamp exacto, permitiendo diagnosticar sin necesitar que
-  la petición HTTP falle ni reintentar automáticamente (fuera de alcance de este reto).
+- *Introduce Concurrency* / *Maintain Multiple Copies of Computations*: el escalado horizontal de
+  Lambda crea múltiples *execution environments* (instancias) para atender en paralelo las peticiones
+  concurrentes de k6 — acotado por el límite de cuenta de 10 (ver nota de implementación más abajo).
+
+**Disponibilidad — Fault Detection**
+
+- *Timestamp*: el `print()` con `datetime.now(timezone.utc).isoformat(...)` en `EMERGENCY_RECEIVED` y
+  `EMAIL_SENT` es exactamente esta táctica — "asignar el estado de un reloj local al evento
+  inmediatamente después de que ocurra".
+
+**Disponibilidad — Fault Recovery**
+
+- *Exception Handling*: el `try/except` alrededor de `_send_alert_email` captura una falla de Gmail
+  (timeout, 401, etc.) y la loguea como `EMAIL_SEND_FAILED` con el error y el timestamp, en vez de
+  dejar que la Lambda colapse.
+- *Graceful Degradation*: la decisión de que la función siempre responda `200` mantiene la función más
+  crítica del sistema (el contrato HTTP que valida k6) viva, aunque la función menos crítica (enviar el
+  correo) falle — se degrada la notificación, no la ingesta.
 
 **Modificabilidad**
 
 - *Encapsular:* toda la lógica de Gmail OAuth2 vive en dos funciones separadas del handler principal
   (`_get_access_token`, `_send_alert_email`); cambiar de proveedor de notificación (ej. a SES) solo
   tocaría esas dos funciones, no la lógica de detección del evento `Emergency`.
+
+**Tácticas del módulo *no* aplicadas (y por qué)**
+
+- *Retry* / *Circuit Breaker*: no se reintenta el envío de Gmail si falla una vez — mejora futura
+  razonable, fuera del alcance de este reto.
+- *Prioritize Events*: `Position` y `Emergency` se procesan con la misma prioridad; no hay una cola con
+  esquema de prioridad.
+- *Bound Queue Sizes* / *Load Balancer* (como patrón explícito) / *Map-Reduce*: no aplican — no hay
+  colas explícitas que acotar, el "balanceo" de instancias lo hace AWS de forma transparente al escalar
+  Lambda, y no hay un problema de datos masivos que justifique map-reduce.
 
 ## Consecuencias (trade-offs)
 

@@ -42,7 +42,7 @@ export default function () {
 
   const headers = { 'Content-Type': 'application/json' };
 
-  const res = http.post('https://mtm01dt47e.execute-api.sa-east-1.amazonaws.com/prod/events', payload, { headers });
+  const res = http.post('https://2kyxut8lb0.execute-api.us-east-1.amazonaws.com/prod/events', payload, { headers });
 
   console.log(JSON.stringify({
     globalIndex,
