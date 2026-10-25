@@ -7,6 +7,14 @@ export const options = {
   duration: '30s',   // Tiempo total
 };
 
+// Índice global para iteraciones (variable compartida entre VUs)
+let globalIndex = 0;
+
+// Bloque para incrementar el índice global de forma segura
+function getGlobalIndex() {
+  return globalIndex++;
+}
+
 // Generar placa de vehículo
 function generateVehiclePlate() {
   const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
@@ -32,9 +40,8 @@ export default function () {
   // Cálculo del índice global
   const globalIndex = (__VU - 1) * (options.iterations / options.vus) + __ITER;
   
-  const type = generateType(globalIndex);
   const payload = JSON.stringify({
-    type: type,
+    type: generateType(globalIndex),
     vehicle_plate: generateVehiclePlate(),
     coordinates: generateCoordinates(),
     status: 'OK',
@@ -46,7 +53,7 @@ export default function () {
 
   console.log(JSON.stringify({
     globalIndex,
-    type: type,
+    type: payload.type,
     timestamp: new Date().toISOString(),
     status: res.status,
     duration: res.timings.duration
