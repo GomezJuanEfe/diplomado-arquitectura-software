@@ -50,7 +50,7 @@ Permite a los arquitectos tomar decisiones de diseño informadas para que el sis
 - Refinamiento de elementos.
 - Toma de decisiones basada en atributos de calidad.
 
-> 📎 Anexo: [Diseño Basado en Atributos (ADD)](./Anexos/ADD.md)
+> 📎 Anexo: [Diseño Basado en Atributos (ADD)](./Anexo:%20ADD.md)
 
 ## 2.2 Estilos de arquitectura de software
 
@@ -62,7 +62,7 @@ Los **estilos de arquitectura** son los principios y estructuras fundamentales q
 - Características, ventajas y desventajas de cada uno.
 - Análisis comparativo para elegir el estilo más adecuado según el contexto.
 
-> 📎 Anexo: [Estilos de arquitectura de software](./Anexos/Estilos-Arquitectura.md)
+> 📎 Anexo: [Estilos de arquitectura de software](./Anexo:%20Estilos%20Arquitectura%20Software.md)
 
 # 3. Cierre: Análisis de riesgos
 
@@ -76,4 +76,4 @@ El **análisis de riesgos** es una práctica esencial para anticipar y mitigar p
 | **Evaluación de riesgos** | Analizar y valorar los riesgos identificados, determinar su relevancia y las acciones para gestionarlos. |
 | **Lluvia de riesgos** | Técnica colaborativa para descubrir, consensuar y mitigar riesgos con la participación del equipo. |
 
-> 📎 Anexo: [Análisis de riesgos](./Anexos/Analisis-Riesgos.md)
+> 📎 Anexo: [Análisis de riesgos](./Anexo:%20Analisis%20Riesgos.md)
