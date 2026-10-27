@@ -40,33 +40,7 @@ Tiene dos dimensiones:
 
 **Ejemplo: inicio de sesión**
 
-```mermaid
-sequenceDiagram
-    actor U as :User
-    participant LP as :Login Page
-    participant LC as :Login Controller
-    participant DAO as :User Direct Access Object
-    participant US as :User Session
-    participant L as :Logger
-
-    U->>LP: login
-    LP->>LC: login(...)
-    LC->>DAO: checkPwd(...)
-    DAO-->>LC: 
-    LC->>US: new
-    US-->>LC: 
-    LC-)L: register User Login(...)
-    LC-->>LP: 
-    LP-->>U: 
-```
-
-| Notación | Significado |
-|---|---|
-| Flecha sólida con punta llena | Mensaje síncrono |
-| Flecha sólida con punta abierta | Mensaje asíncrono |
-| Flecha punteada | Mensaje de retorno |
-| Línea vertical punteada | Línea de vida (*lifeline*) |
-| Rectángulo sobre la línea de vida | Ocurrencia de ejecución |
+![Estándares de Diagramación - UML](./assets/01-uml-diagrama-secuencia-login.png)
 
 ## Diagrama de actividad
 
@@ -79,35 +53,7 @@ En particular, los diagramas de actividad pueden expresar concurrencia:
 
 **Ejemplo: rastreador de buceo (Depth Meter / Dive Tracker / Thermometer)**
 
-```mermaid
-flowchart TB
-    S((inicio)) --> RP1[read pressure]
-    RP1 --> D1{¿bajo el agua?}
-    D1 -- "no" --> RP1
-    D1 -- "sí" --> EDM[enter dive mode]
-    EDM --> F1[["fork"]]
-
-    F1 --> CD[check depth]
-    CD --> RP2[read pressure]
-    RP2 --> D2{¿asciende muy rápido?}
-    D2 -- "sí" --> BA[beep alarm]
-    D2 -- "no" --> D3
-    BA --> D3{¿bajo el agua?}
-    D3 -- "sí" --> SL1[sleep 0.5 sec]
-    SL1 --> CD
-    D3 -- "no" --> EX1>exit dive mode]
-
-    F1 --> CWT[check water temperature]
-    CWT --> RWT[read water temperature]
-    RWT --> SL2[sleep 30 sec]
-    SL2 --> CWT
-    CWT -. "recibe señal" .-> EX2>exit dive mode]
-    EX2 --> J1
-
-    EX1 --> J1[["join"]]
-    J1 --> FDM[finish dive mode]
-    FDM --> E((fin))
-```
+![Estándares de Diagramación](./assets/02-uml-diagrama-actividad-dive-tracker.png)
 
 > En el diagrama original, los pasos están organizados en tres carriles: **Depth Meter**, **Dive Tracker** y **Thermometer**. El monitoreo de profundidad y el de temperatura corren en paralelo entre el *fork* y el *join*.
 
@@ -134,18 +80,7 @@ flowchart TB
 
 > Un **sistema de software** está compuesto por uno o más **contenedores** (aplicaciones y almacenes de datos), cada uno de los cuales contiene uno o más **componentes**, que a su vez se implementan mediante uno o más elementos de **código** (clases, interfaces, objetos, funciones, etc.).
 
-```mermaid
-flowchart TB
-    SS["<b>Software System</b>"] --> C1["Container"]
-    SS --> C2["<b>Container</b><br/>(p. ej., web app, app móvil,<br/>esquema de BD, file system, object store)"]
-    SS --> C3["Container"]
-    C2 --> CO1["Component"]
-    C2 --> CO2["<b>Component</b>"]
-    C2 --> CO3["Component"]
-    CO2 --> K1["Code"]
-    CO2 --> K2["<b>Code</b>"]
-    CO2 --> K3["Code"]
-```
+![C4 Niveles](./assets/03-c4-niveles-zoom.png)
 
 Cada nivel es un **"zoom in"** sobre un elemento del nivel anterior: Contexto → Contenedores → Componentes → Código. Esto aplica directamente el principio de **consistencia representacional**: siempre se sabe en qué parte del sistema general se está.
 
@@ -155,116 +90,19 @@ Fuente: [c4model.com](https://c4model.com)
 
 ### Nivel 1 — Contexto
 
-```mermaid
-flowchart TB
-    P(["<b>Personal Banking Customer</b><br/>[Person]<br/>Cliente del banco con cuentas personales"])
-    IBS["<b>Internet Banking System</b><br/>[Software System]<br/>Permite a los clientes ver información<br/>de sus cuentas y hacer pagos"]
-    EMAIL["<b>E-mail System</b><br/>[Software System]<br/>Sistema interno de correo<br/>Microsoft Exchange"]
-    MF["<b>Mainframe Banking System</b><br/>[Software System]<br/>Almacena toda la información bancaria:<br/>clientes, cuentas, transacciones"]
-
-    P -- "Consulta saldos y hace pagos usando" --> IBS
-    IBS -- "Envía e-mails usando" --> EMAIL
-    EMAIL -- "Envía e-mails a" --> P
-    IBS -- "Obtiene información de cuentas<br/>y hace pagos usando" --> MF
-
-    classDef person fill:#08427b,color:#fff,stroke:#052e56
-    classDef system fill:#1168bd,color:#fff,stroke:#0b4884
-    classDef external fill:#999,color:#fff,stroke:#6b6b6b
-    class P person
-    class IBS system
-    class EMAIL,MF external
-```
+![C4 Jerarquía system container](./assets/04-c4-jerarquia-system-container-component-code.png)
 
 ### Nivel 2 — Contenedores
 
-```mermaid
-flowchart TB
-    P(["<b>Personal Banking Customer</b><br/>[Person]"])
-
-    subgraph IBS["Internet Banking System [Software System]"]
-        WEB["<b>Web Application</b><br/>[Java and Spring MVC]<br/>Entrega el contenido estático<br/>y la SPA"]
-        SPA["<b>Single-Page Application</b><br/>[JavaScript and Angular]<br/>Toda la funcionalidad de banca<br/>en el navegador"]
-        MOB["<b>Mobile App</b><br/>[Xamarin]<br/>Subconjunto de la funcionalidad<br/>en el móvil"]
-        API["<b>API Application</b><br/>[Java and Spring MVC]<br/>Funcionalidad vía API JSON/HTTPS"]
-        DB[("<b>Database</b><br/>[Oracle Database Schema]<br/>Usuarios, credenciales con hash,<br/>logs de acceso")]
-    end
-
-    EMAIL["<b>E-mail System</b><br/>[Software System]"]
-    MF["<b>Mainframe Banking System</b><br/>[Software System]"]
-
-    P -- "Visita bigbank.com/ib [HTTPS]" --> WEB
-    P -- "Consulta saldos y hace pagos" --> SPA
-    P -- "Consulta saldos y hace pagos" --> MOB
-    WEB -- "Entrega al navegador del cliente" --> SPA
-    SPA -- "Llama a la API [JSON/HTTPS]" --> API
-    MOB -- "Llama a la API [JSON/HTTPS]" --> API
-    API -- "Lee y escribe [SQL/TCP]" --> DB
-    API -- "Envía e-mails [SMTP]" --> EMAIL
-    API -- "Llama a la API [XML/HTTPS]" --> MF
-    EMAIL -- "Envía e-mails a" --> P
-```
+![C4 Nivel 1 - Contexto](./assets/05-c4-nivel1-contexto.png)
 
 ### Nivel 3 — Componentes (API Application)
 
-```mermaid
-flowchart TB
-    SPA["<b>Single-Page Application</b><br/>[Container]"]
-    MOB["<b>Mobile App</b><br/>[Container]"]
-
-    subgraph API["API Application [Container]"]
-        SIC["<b>Sign In Controller</b><br/>[Spring MVC Rest Controller]<br/>Permite iniciar sesión"]
-        RPC["<b>Reset Password Controller</b><br/>[Spring MVC Rest Controller]<br/>Restablece la contraseña con URL de un solo uso"]
-        ASC["<b>Accounts Summary Controller</b><br/>[Spring MVC Rest Controller]<br/>Resumen de las cuentas del cliente"]
-        SEC["<b>Security Component</b><br/>[Spring Bean]<br/>Inicio de sesión, cambio de contraseña, etc."]
-        EC["<b>E-mail Component</b><br/>[Spring Bean]<br/>Envía e-mails a los usuarios"]
-        MBF["<b>Mainframe Banking System Facade</b><br/>[Spring Bean]<br/>Fachada hacia el mainframe"]
-    end
-
-    DB[("<b>Database</b><br/>[Container]")]
-    EMAIL["<b>E-mail System</b><br/>[Software System]"]
-    MF["<b>Mainframe Banking System</b><br/>[Software System]"]
-
-    SPA & MOB -- "Llama a la API [JSON/HTTPS]" --> SIC & RPC & ASC
-    SIC -- "Usa" --> SEC
-    RPC -- "Usa" --> SEC
-    RPC -- "Usa" --> EC
-    ASC -- "Usa" --> MBF
-    SEC -- "Lee y escribe [SQL/TCP]" --> DB
-    EC -- "Envía e-mails usando" --> EMAIL
-    MBF -- "Usa [XML/HTTPS]" --> MF
-```
+![C4 Nivel 2 - Contenedores](./assets/06-c4-nivel2-contenedores.png)
 
 ### Nivel 4 — Código (Mainframe Banking System Facade)
 
-```mermaid
-classDiagram
-    namespace com_bigbankplc_internetbanking_component_mainframe {
-        class MainframeBankingSystemFacade {
-            <<interface>>
-        }
-        class MainframeBankingSystemFacadeImpl
-        class MainframeBankingSystemException
-        class GetBalanceRequest
-        class GetBalanceResponse
-        class BankingSystemConnection
-        class AbstractRequest {
-            <<abstract>>
-        }
-        class AbstractResponse
-    }
-    class InternetBankingSystemException
-
-    MainframeBankingSystemFacade <|.. MainframeBankingSystemFacadeImpl
-    MainframeBankingSystemFacadeImpl ..> MainframeBankingSystemException : throws
-    MainframeBankingSystemFacadeImpl ..> GetBalanceRequest : creates
-    MainframeBankingSystemFacadeImpl ..> BankingSystemConnection : uses
-    MainframeBankingSystemFacadeImpl ..> GetBalanceResponse : parses
-    InternetBankingSystemException <|-- MainframeBankingSystemException
-    AbstractRequest <|-- GetBalanceRequest
-    AbstractResponse <|-- GetBalanceResponse
-    BankingSystemConnection ..> AbstractRequest : sends
-    BankingSystemConnection ..> AbstractResponse : receives
-```
+![C4 Nivel 3 - Componentes](./assets/07-c4-nivel3-componentes.png)
 
 # ArchiMate
 
@@ -278,31 +116,7 @@ El objetivo de ArchiMate es ser **"lo más pequeño posible"**, no cubrir todos 
 
 ArchiMate se usa junto con el ciclo **ADM** (*Architecture Development Method*) de **TOGAF**. Las capas centrales de ArchiMate (*core layers*) corresponden a las fases B, C y D del ciclo:
 
-```mermaid
-flowchart TB
-    PRE((Preliminary)) --> A((A. Architecture Vision))
-    A --> B((B. Business Architecture))
-    B --> C((C. Information Systems Architecture))
-    C --> D((D. Technology Architecture))
-    D --> E((E. Opportunities and Solutions))
-    E --> F((F. Migration Planning))
-    F --> G((G. Implementation Governance))
-    G --> H((H. Architecture Change Management))
-    H --> A
-    RM((Requirements Management)) <--> A & B & C & D & E & F & G & H
-
-    B -.- BL["Business Layer"]
-    C -.- AL["Application Layer"]
-    D -.- TL["Technology Layer"]
-```
-
-| Zona del ciclo | Fases |
-|---|---|
-| **Strategy & Motivation** | Preliminary, A |
-| **Core Layers** (ArchiMate) | B → Business Layer, C → Application Layer, D → Technology Layer |
-| **Implementation & Migration** | E, F, G, H |
-
-> **Nota:** en la imagen original, la fase D aparece etiquetada como "Business Layer". Es un error de la imagen: la fase D (*Technology Architecture*) corresponde a la **Technology Layer**.
+![](./assets/09-archimate-togaf-adm.png)
 
 ## Capas
 
@@ -320,11 +134,7 @@ El lenguaje núcleo de ArchiMate define una estructura de elementos genéricos y
 
 Además de las capas, ArchiMate organiza sus elementos en tres **aspectos**. El resultado es una matriz de capas × aspectos:
 
-| | Estructura pasiva | Comportamiento | Estructura activa |
-|---|---|---|---|
-| **Business** | | | |
-| **Application** | | | |
-| **Technology** | | | |
+![](./assets/10-archimate-capas-aspectos.png)
 
 - **Estructura activa:** los elementos que *realizan* el comportamiento (actores, componentes, nodos).
 - **Comportamiento:** lo que se *hace* (procesos, funciones, servicios).
@@ -337,112 +147,27 @@ flowchart LR
 
 Ejemplo en la capa de aplicación:
 
-| Active Structures | Behavior | Passive Structures |
-|---|---|---|
-| Application component | Application service | Data object |
-| Application interface | Application function | |
-| Application collaboration | Application interaction | |
+![](./assets/11-archimate-estructura-comportamiento-aplicacion.png)
 
 ## Elementos por capa
 
 ### Elementos de estructuras activas
 
-| Business | Application | Technology |
-|---|---|---|
-| Business actor | Application component | Node |
-| Business role | Application interface | Device |
-| Business collaboration | Application collaboration | System software |
-| Business interface | | Infrastructure interface |
-| Location | | Network |
-| | | Communication path |
+![](./assets/12-archimate-elementos-estructuras-activas.png)
 
 ### Elementos de comportamiento
 
-| Business | Application | Technology |
-|---|---|---|
-| Business process | Application service | Infrastructure service |
-| Business function | Application function | Infrastructure function |
-| Business interaction | Application interaction | |
-| Business event | | |
-| Business service | | |
+![](./assets/13-archimate-elementos-comportamiento.png)
 
 ### Elementos de estructuras pasivas
 
-| Business | Application | Technology |
-|---|---|---|
-| Business object | Data object | Artifact |
-| Representation | | |
-| Meaning | | |
-| Value | | |
-| Product | | |
-| Contract | | |
+![](./assets/14-archimate-elementos-estructuras-pasivas.png)
 
 > **Colores convencionales:** amarillo para la capa de negocio, azul claro para la capa de aplicación y verde para la capa de tecnología.
 
 ## Ejemplo: manejo de reclamaciones de una aseguradora
 
-```mermaid
-flowchart TB
-    subgraph BL["Business Layer"]
-        direction TB
-        subgraph ERA["External Roles and Actors"]
-            CLIENT["Client<br/>«Business Actor»"] --> INSURANT["Insurant<br/>«Business Role»"]
-        end
-        subgraph EBS["External Business Services"]
-            CR(["Claim Registration"])
-            CI(["Customer Information"])
-            CP(["Claim Payment"])
-        end
-        subgraph BP["Business Processes and Internal Actors / Roles"]
-            subgraph HC["Handle Claim «Business Process»"]
-                R1[Register] --> R2[Accept] --> R3[Valuate] --> R4[Pay]
-            end
-            ARCHI["ArchiSurance<br/>«Business Actor»"] --> INSURER["Insurer<br/>«Business Role»"]
-        end
-    end
-
-    subgraph AL["Application Layer"]
-        direction TB
-        subgraph EAS["External Application Services"]
-            IA(["Insurance Application"])
-            CDM(["Customer Data Modification"])
-            PP(["Premium Payment"])
-        end
-        subgraph ACS["Application Components and Services"]
-            CRM["CRM System"]
-            PDM["Policy Data Management"]
-            FIN["Financial Application"]
-        end
-    end
-
-    subgraph TL["Technology Layer"]
-        direction TB
-        subgraph EIS["External Infrastructure Services"]
-            CFS(["Claim Files Service"])
-            CUFS(["Customer File Service"])
-        end
-        subgraph INF["Infrastructure"]
-            MAIN["Mainframe «Node»<br/>CICS · DBMS · Message Queuing<br/>«System Software»"]
-            UNIX["Unix Server Farm<br/>UNIX Server · UNIX Server «Device»"]
-            NAS["NAS File Server «Device»"]
-        end
-    end
-
-    INSURANT -- "served by" --> CR & CI & CP
-    CR -. "realized by" .-> HC
-    CP -. "realized by" .-> HC
-    INSURER -- "assigned to" --> HC
-    HC -- "served by" --> IA & CDM & PP
-    IA -. "realized by" .-> CRM
-    CDM -. "realized by" .-> PDM
-    PP -. "realized by" .-> FIN
-    PDM -- "served by" --> CFS
-    FIN -- "served by" --> CUFS
-    CFS -. "realized by" .-> MAIN
-    CUFS -. "realized by" .-> NAS
-```
-
-> Diagrama simplificado del original: se leen de arriba hacia abajo las relaciones "*served by*" (la capa inferior presta servicios a la superior) y "*realized by*" (un elemento concreto realiza un servicio).
+![](./assets/15-archimate-ejemplo-aseguradora.png)
 
 Este ejemplo muestra los principales tipos de relación de ArchiMate:
 
