@@ -1,6 +1,6 @@
 # Análisis de Riesgos
 
-> Anexo del [Módulo 3](../Modulo-3.md) — Cierre.
+> Anexo del [Módulo 3](./Modulo-3.md) — Cierre.
 
 ## Introducción
 

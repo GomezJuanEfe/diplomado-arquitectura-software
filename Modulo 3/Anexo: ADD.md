@@ -1,6 +1,6 @@
 # Diseño Basado en Atributos (ADD)
 
-> Anexo del [Módulo 3](../Modulo-3.md) — Profundización.
+> Anexo del [Módulo 3](./Modulo-3.md) — Profundización.
 
 ## Introducción
 
@@ -48,7 +48,7 @@ Antes de comenzar el diseño de la arquitectura, es importante **determinar el a
 
 ![Diagrama de contexto del sistema](./assets/add-02-diagrama-contexto-sistema.jpeg)
 
-*Ejemplo de diagrama de contexto (nivel 1 de C4): Internet Banking System. Ver [Técnicas de diagramación](./Tecnicas-Diagramacion.md).*
+*Ejemplo de diagrama de contexto (nivel 1 de C4): Internet Banking System. Ver [Técnicas de diagramación](./Anexo:%20Tecnica%20Diagramacion.md).*
 
 # Los pasos del proceso ADD
 
