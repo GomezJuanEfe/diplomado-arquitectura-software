@@ -1,0 +1,81 @@
+{
+  "widgets": [
+    {
+      "type": "metric",
+      "x": 0,
+      "y": 0,
+      "width": 12,
+      "height": 7,
+      "properties": {
+        "title": "Nivel de servicio",
+        "view": "timeSeries",
+        "region": "__REGION__",
+        "stat": "Maximum",
+        "period": 10,
+        "metrics": [
+          [
+            "UltraSeguros/Resiliencia",
+            "ServiceLevel"
+          ]
+        ],
+        "yAxis": {
+          "left": {
+            "min": 0,
+            "max": 3
+          }
+        }
+      }
+    },
+    {
+      "type": "metric",
+      "x": 12,
+      "y": 0,
+      "width": 12,
+      "height": 7,
+      "properties": {
+        "title": "Peticiones y errores",
+        "view": "timeSeries",
+        "region": "__REGION__",
+        "stat": "Sum",
+        "period": 10,
+        "metrics": [
+          [
+            "UltraSeguros/Resiliencia",
+            "Requests"
+          ],
+          [
+            "UltraSeguros/Resiliencia",
+            "Errors"
+          ]
+        ]
+      }
+    },
+    {
+      "type": "log",
+      "x": 0,
+      "y": 7,
+      "width": 24,
+      "height": 7,
+      "properties": {
+        "title": "Transiciones de nivel",
+        "region": "__REGION__",
+        "view": "table",
+        "query": "SOURCE '/aws/lambda/reto3-auditor' | filter evento = 'NIVEL_CAMBIADO' | fields timestamp, desde, hacia, errores | sort timestamp desc"
+      }
+    },
+    {
+      "type": "alarm",
+      "x": 0,
+      "y": 14,
+      "width": 24,
+      "height": 3,
+      "properties": {
+        "title": "Alarmas de recuperacion",
+        "alarms": [
+          "arn:aws:cloudwatch:__REGION__:__ACCOUNT__:alarm:reto3-recupera-l3",
+          "arn:aws:cloudwatch:__REGION__:__ACCOUNT__:alarm:reto3-recupera-l2"
+        ]
+      }
+    }
+  ]
+}

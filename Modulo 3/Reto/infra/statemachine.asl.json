@@ -1,0 +1,301 @@
+{
+  "Comment": "Enruta cada peticion al servicio del nivel activo",
+  "StartAt": "LeerNivel",
+  "States": {
+    "LeerNivel": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::dynamodb:getItem",
+      "Parameters": {
+        "TableName": "reto3-estado",
+        "Key": {
+          "id": {
+            "S": "estado"
+          }
+        }
+      },
+      "ResultSelector": {
+        "nivel.$": "$.Item.nivel.N"
+      },
+      "ResultPath": "$.estado",
+      "Next": "ElegirNivel",
+      "TimeoutSeconds": 2,
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "ResultPath": "$.fallo",
+          "Next": "PrepararContingencia"
+        }
+      ]
+    },
+    "ElegirNivel": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.estado.nivel",
+          "StringEquals": "1",
+          "Next": "ServicioFull"
+        },
+        {
+          "Variable": "$.estado.nivel",
+          "StringEquals": "2",
+          "Next": "ServicioDegradado"
+        }
+      ],
+      "Default": "ServicioMinimo"
+    },
+    "ServicioFull": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "arn:aws:lambda:__REGION__:__ACCOUNT__:function:reto3-svc-full",
+        "Payload": {
+          "error.$": "$.error"
+        }
+      },
+      "OutputPath": "$.Payload",
+      "Next": "VerificarResultado",
+      "TimeoutSeconds": 4,
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.TooManyRequestsException",
+            "Lambda.ServiceException"
+          ],
+          "IntervalSeconds": 1,
+          "MaxAttempts": 2,
+          "BackoffRate": 2
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "ResultPath": "$.fallo",
+          "Next": "PrepararContingencia"
+        }
+      ]
+    },
+    "ServicioDegradado": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "arn:aws:lambda:__REGION__:__ACCOUNT__:function:reto3-svc-degradado",
+        "Payload": {
+          "error.$": "$.error"
+        }
+      },
+      "OutputPath": "$.Payload",
+      "Next": "VerificarResultado",
+      "TimeoutSeconds": 4,
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.TooManyRequestsException",
+            "Lambda.ServiceException"
+          ],
+          "IntervalSeconds": 1,
+          "MaxAttempts": 2,
+          "BackoffRate": 2
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "ResultPath": "$.fallo",
+          "Next": "PrepararContingencia"
+        }
+      ]
+    },
+    "ServicioMinimo": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "arn:aws:lambda:__REGION__:__ACCOUNT__:function:reto3-svc-minimo",
+        "Payload": {
+          "error.$": "$.error"
+        }
+      },
+      "OutputPath": "$.Payload",
+      "Next": "VerificarResultado",
+      "TimeoutSeconds": 4,
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.TooManyRequestsException",
+            "Lambda.ServiceException"
+          ],
+          "IntervalSeconds": 1,
+          "MaxAttempts": 2,
+          "BackoffRate": 2
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "ResultPath": "$.fallo",
+          "Next": "PrepararContingencia"
+        }
+      ]
+    },
+    "VerificarResultado": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.ok",
+          "BooleanEquals": false,
+          "Next": "RegistrarError"
+        }
+      ],
+      "Default": "Responder"
+    },
+    "RegistrarError": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::dynamodb:updateItem",
+      "Parameters": {
+        "TableName": "reto3-estado",
+        "Key": {
+          "id": {
+            "S": "estado"
+          }
+        },
+        "UpdateExpression": "SET ultimo_error = :t ADD errores :uno",
+        "ExpressionAttributeValues": {
+          ":uno": {
+            "N": "1"
+          },
+          ":t": {
+            "S.$": "$$.State.EnteredTime"
+          }
+        },
+        "ReturnValues": "UPDATED_NEW"
+      },
+      "ResultSelector": {
+        "errores.$": "States.StringToJson($.Attributes.errores.N)"
+      },
+      "ResultPath": "$.conteo",
+      "Next": "EvaluarUmbral",
+      "TimeoutSeconds": 2,
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "ResultPath": null,
+          "Next": "Responder"
+        }
+      ]
+    },
+    "EvaluarUmbral": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.conteo.errores",
+          "NumericGreaterThanEquals": 10,
+          "Next": "EscalarNivel3"
+        },
+        {
+          "Variable": "$.conteo.errores",
+          "NumericGreaterThanEquals": 5,
+          "Next": "EscalarNivel2"
+        }
+      ],
+      "Default": "Responder"
+    },
+    "EscalarNivel2": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::dynamodb:updateItem",
+      "Parameters": {
+        "TableName": "reto3-estado",
+        "Key": {
+          "id": {
+            "S": "estado"
+          }
+        },
+        "UpdateExpression": "SET nivel = :n, actualizado_en = :t",
+        "ConditionExpression": "nivel < :n",
+        "ExpressionAttributeValues": {
+          ":n": {
+            "N": "2"
+          },
+          ":t": {
+            "S.$": "$$.State.EnteredTime"
+          }
+        }
+      },
+      "ResultPath": null,
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "ResultPath": null,
+          "Next": "Responder"
+        }
+      ],
+      "Next": "Responder",
+      "TimeoutSeconds": 2
+    },
+    "EscalarNivel3": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::dynamodb:updateItem",
+      "Parameters": {
+        "TableName": "reto3-estado",
+        "Key": {
+          "id": {
+            "S": "estado"
+          }
+        },
+        "UpdateExpression": "SET nivel = :n, actualizado_en = :t",
+        "ConditionExpression": "nivel < :n",
+        "ExpressionAttributeValues": {
+          ":n": {
+            "N": "3"
+          },
+          ":t": {
+            "S.$": "$$.State.EnteredTime"
+          }
+        }
+      },
+      "ResultPath": null,
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "ResultPath": null,
+          "Next": "Responder"
+        }
+      ],
+      "Next": "Responder",
+      "TimeoutSeconds": 2
+    },
+    "PrepararContingencia": {
+      "Type": "Pass",
+      "Comment": "Responde sin depender de ninguna Lambda",
+      "Parameters": {
+        "ok": false,
+        "statusCode": 503,
+        "body": {
+          "nivel": 3,
+          "mensaje": "Nivel 3: Sistema bajo mantenimiento, intente más tarde"
+        }
+      },
+      "Next": "RegistrarError"
+    },
+    "Responder": {
+      "Type": "Pass",
+      "Parameters": {
+        "statusCode.$": "$.statusCode",
+        "cuerpo.$": "States.JsonToString($.body)"
+      },
+      "End": true
+    }
+  }
+}

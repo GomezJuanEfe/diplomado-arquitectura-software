@@ -1,0 +1,10 @@
+{"evento": "NIVEL_CAMBIADO", "desde": 1, "hacia": 2, "errores": 5, "timestamp": "2026-11-02T16:58:14.462+00:00"}
+{"evento": "NIVEL_CAMBIADO", "desde": 2, "hacia": 1, "errores": 0, "timestamp": "2026-11-02T16:59:32.282+00:00"}
+{"evento": "NIVEL_CAMBIADO", "desde": 1, "hacia": 2, "errores": 5, "timestamp": "2026-11-02T17:00:24.309+00:00"}
+{"evento": "NIVEL_CAMBIADO", "desde": 2, "hacia": 3, "errores": 10, "timestamp": "2026-11-02T17:00:40.319+00:00"}
+{"evento": "NIVEL_CAMBIADO", "desde": 3, "hacia": 2, "errores": 0, "timestamp": "2026-11-02T17:01:45.400+00:00"}
+{"evento": "NIVEL_CAMBIADO", "desde": 2, "hacia": 1, "errores": 0, "timestamp": "2026-11-02T17:02:12.124+00:00"}
+{"evento": "NIVEL_CAMBIADO", "desde": 1, "hacia": 2, "errores": 5, "timestamp": "2026-11-02T17:02:34.389+00:00"}
+{"evento": "NIVEL_CAMBIADO", "desde": 2, "hacia": 3, "errores": 10, "timestamp": "2026-11-02T17:02:50.400+00:00"}
+{"evento": "NIVEL_CAMBIADO", "desde": 3, "hacia": 2, "errores": 0, "timestamp": "2026-11-02T17:03:55.461+00:00"}
+{"evento": "NIVEL_CAMBIADO", "desde": 2, "hacia": 1, "errores": 0, "timestamp": "2026-11-02T17:04:22.257+00:00"}

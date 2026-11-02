@@ -1,0 +1,9 @@
+#set($respuesta = $util.parseJson($input.body))
+#if($respuesta.status == 'SUCCEEDED')
+#set($salida = $util.parseJson($respuesta.output))
+#set($context.responseOverride.status = $salida.statusCode)
+$salida.cuerpo
+#else
+#set($context.responseOverride.status = 503)
+{"nivel": 3, "mensaje": "Nivel 3: Sistema bajo mantenimiento, intente más tarde"}
+#end

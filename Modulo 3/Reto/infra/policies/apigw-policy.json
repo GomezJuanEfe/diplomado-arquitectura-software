@@ -1,0 +1,10 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": "states:StartSyncExecution",
+      "Resource": "arn:aws:states:__REGION__:__ACCOUNT__:stateMachine:reto3-enrutador"
+    }
+  ]
+}

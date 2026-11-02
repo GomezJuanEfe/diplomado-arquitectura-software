@@ -1,0 +1,5 @@
+#set($error = $input.params('error'))
+{
+  "stateMachineArn": "__STATE_MACHINE_ARN__",
+  "input": "{\"error\": #if($error == 'true')true#{else}false#end}"
+}

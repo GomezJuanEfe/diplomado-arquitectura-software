@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Reto Módulo 3 - Arquitectura resiliente en AWS</title>
+<style>
+@page { size: A4; margin: 18mm 17mm 16mm; }
+* { box-sizing: border-box; }
+body { font: 10.5pt/1.45 "Liberation Sans", Arial, sans-serif; color: #1f2733; margin: 0; }
+h1 { font-size: 21pt; line-height: 1.2; margin: 0 0 4pt; color: #12324f; }
+h2 { font-size: 13.5pt; color: #12324f; border-bottom: 1.2pt solid #12324f; padding-bottom: 2pt; margin: 16pt 0 6pt; break-after: avoid; }
+h3 { font-size: 11pt; color: #12324f; margin: 10pt 0 3pt; break-after: avoid; }
+p { margin: 0 0 6pt; }
+ul { margin: 0 0 6pt; padding-left: 15pt; }
+li { margin-bottom: 2pt; }
+.sub { color: #55606e; margin-bottom: 10pt; }
+.destacado { background: #eaf1f7; border-left: 3pt solid #12324f; padding: 7pt 10pt; margin: 7pt 0; break-inside: avoid; }
+table { width: 100%; border-collapse: collapse; margin: 5pt 0 9pt; font-size: 9.3pt; break-inside: avoid; }
+th { background: #12324f; color: #fff; text-align: left; padding: 3.5pt 5pt; }
+td { border-bottom: .6pt solid #c6ced6; padding: 3.5pt 5pt; vertical-align: top; }
+code { font: 9pt "Liberation Mono", monospace; }
+figure { margin: 6pt 0 10pt; break-inside: avoid; }
+figcaption { font-size: 8.8pt; color: #55606e; text-align: center; margin-top: 2pt; }
+svg { width: 100%; height: auto; display: block; }
+svg text { font-family: "Liberation Sans", Arial, sans-serif; }
+.caja { fill: #eaf1f7; stroke: #12324f; stroke-width: 1.2; }
+.datos { fill: #fdf3e1; stroke: #9a6a10; stroke-width: 1.2; }
+.ext { fill: #f1f2f4; stroke: #6b7480; stroke-width: 1.2; }
+.lin { stroke: #33414f; stroke-width: 1.2; fill: none; marker-end: url(#f); }
+.t { font-size: 12px; font-weight: bold; fill: #12324f; text-anchor: middle; }
+.d { font-size: 10px; fill: #3b4652; text-anchor: middle; }
+.e { font-size: 10px; fill: #3b4652; }
+</style>
+</head>
+<body>
+<h1>Arquitectura resiliente por niveles de servicio</h1>
+<p class="sub">Reto Módulo 3 · Sistemas UltraSeguros S.A. · Diplomado de Arquitectura de Software y Cloud Computing<br>
+Juan F. Gomez · Noviembre de 2026 · Región AWS <code>us-east-1</code></p>
+
+<div class="destacado">
+<strong>Resultado.</strong> En la prueba con el script k6 entregado, el sistema recorrió los 3 niveles y volvió solo al Nivel 1, con la secuencia <code>1→2→1→2→3→2→1→2→3→2→1</code>. Las 140 peticiones recibieron respuesta, sin ningún 502 ni 504, y la mediana de latencia fue de 227 ms.
+</div>
+
+<h2>1. Contexto y drivers de diseño</h2>
+<p>El sistema falla bajo picos de tráfico y eso genera pérdidas. Siguiendo el método ADD, estos son los drivers que guiaron el diseño:</p>
+<table>
+<tr><th style="width:27%">Driver</th><th>Contenido</th></tr>
+<tr><td>Propósito</td><td>Mantener los servicios críticos operando ante fallos y recuperarse sin intervención humana.</td></tr>
+<tr><td>Funcionalidad primaria</td><td>Enrutar cada petición al servicio del nivel activo: Full, Degradado u Operación Mínima.</td></tr>
+<tr><td>Atributo de calidad</td><td>Disponibilidad (sección 2).</td></tr>
+<tr><td>Restricciones</td><td>Solo servicios de AWS, API Gateway como entrada, 3 servicios, umbrales de 5 y 10 errores, y script de pruebas no modificable salvo la URL.</td></tr>
+<tr><td>Preocupación</td><td>La cuenta tiene un límite de 10 ejecuciones concurrentes de Lambda y no admite reservar concurrencia. Cada Lambda adicional por petición reduce la capacidad.</td></tr>
+</table>
+
+<h2>2. Atributo de calidad más importante: Disponibilidad</h2>
+<p>El negocio ofrece servicios críticos y su problema es dejar de responder. Por eso se priorizó la disponibilidad, entendida como la capacidad de seguir prestando servicio ante fallos. El sistema se degrada de a poco, tratando siempre de permanecer en funcionamiento en todo lo que puede, en vez de pasar de "todo" a "nada".</p>
+<p>Este atributo se antepuso al desempeño puro y a la simplicidad: se acepta la latencia de orquestar cada petición y una lógica de control adicional, a cambio de que el sistema siga respondiendo.</p>
+<table>
+<tr><th style="width:27%">Escenario</th><th>Valor</th></tr>
+<tr><td>Fuente</td><td>Peticiones con fallos intencionales y fallos reales de componentes.</td></tr>
+<tr><td>Estímulo</td><td>Ráfagas de 5 y 15 errores consecutivos.</td></tr>
+<tr><td>Artefacto</td><td>Plataforma completa, desde API Gateway hasta los servicios.</td></tr>
+<tr><td>Entorno</td><td>Operación normal, degradada o mínima.</td></tr>
+<tr><td>Respuesta</td><td>Detectar, degradar, responder con mensaje claro, registrar el cambio y recuperarse por etapas.</td></tr>
+<tr><td>Medida (obtenida)</td><td>140 de 140 peticiones respondidas, 0 respuestas 502 o 504, 10 de 10 transiciones esperadas, y fin en Nivel 1.</td></tr>
+</table>
+
+<h2>3. Diagramas de la arquitectura</h2>
+<h3>Nivel 1 de C4: contexto del sistema</h3>
+<figure>
+<svg viewBox="0 0 760 118" role="img" aria-label="Diagrama de contexto">
+<defs><marker id="f" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#33414f"/></marker></defs>
+<rect class="ext" x="10" y="25" width="190" height="68" rx="5"/>
+<text class="t" x="105" y="53">Clientes de UltraSeguros</text><text class="d" x="105" y="71">Consumen los servicios críticos</text>
+<rect class="caja" x="285" y="25" width="190" height="68" rx="5"/>
+<text class="t" x="380" y="53">Plataforma resiliente</text><text class="d" x="380" y="71">Responde según su nivel de salud</text>
+<rect class="ext" x="560" y="25" width="190" height="68" rx="5"/>
+<text class="t" x="655" y="53">Equipo de operaciones</text><text class="d" x="655" y="71">Observa niveles, logs y métricas</text>
+<path class="lin" d="M200 59H284"/><text class="e" x="216" y="50">HTTPS</text>
+<path class="lin" d="M559 59H476"/><text class="e" x="492" y="50">Consulta</text>
+</svg>
+</figure>
+
+<h3>Nivel 2 de C4: contenedores</h3>
+<figure>
+<svg viewBox="0 0 760 420" role="img" aria-label="Diagrama de contenedores">
+<rect class="ext" x="10" y="45" width="110" height="62" rx="5"/><text class="t" x="65" y="72">Cliente</text><text class="d" x="65" y="89">k6 / usuarios</text>
+<rect class="caja" x="165" y="45" width="130" height="62" rx="5"/><text class="t" x="230" y="68">API Gateway</text><text class="d" x="230" y="84">REST · stage niveles</text><text class="d" x="230" y="97">throttling 50/100</text>
+<rect class="caja" x="340" y="45" width="150" height="62" rx="5"/><text class="t" x="415" y="68">Step Functions</text><text class="d" x="415" y="84">Express: enrutador</text><text class="d" x="415" y="97">Retry, Catch, contingencia</text>
+<rect class="caja" x="570" y="10" width="180" height="48" rx="5"/><text class="t" x="660" y="30">Lambda svc-full</text><text class="d" x="660" y="46">Nivel 1: todas las capacidades</text>
+<rect class="caja" x="570" y="68" width="180" height="48" rx="5"/><text class="t" x="660" y="88">Lambda svc-degradado</text><text class="d" x="660" y="104">Nivel 2: lo esencial</text>
+<rect class="caja" x="570" y="126" width="180" height="48" rx="5"/><text class="t" x="660" y="146">Lambda svc-minimo</text><text class="d" x="660" y="162">Nivel 3: mantenimiento</text>
+<rect class="datos" x="340" y="190" width="150" height="62" rx="5"/><text class="t" x="415" y="214">DynamoDB</text><text class="d" x="415" y="230">nivel, errores,</text><text class="d" x="415" y="243">ultimo_error</text>
+<rect class="caja" x="165" y="190" width="130" height="62" rx="5"/><text class="t" x="230" y="214">Lambda auditor</text><text class="d" x="230" y="230">Registra cada</text><text class="d" x="230" y="243">NIVEL_CAMBIADO</text>
+<rect class="caja" x="165" y="300" width="130" height="62" rx="5"/><text class="t" x="230" y="324">CloudWatch Logs</text><text class="d" x="230" y="340">y dashboard</text><text class="d" x="230" y="353">reto3-resiliencia</text>
+<rect class="caja" x="570" y="235" width="180" height="62" rx="5"/><text class="t" x="660" y="259">CloudWatch Metrics</text><text class="d" x="660" y="275">Errors, Requests, ServiceLevel</text><text class="d" x="660" y="288">2 alarmas de recuperación</text>
+<rect class="caja" x="570" y="345" width="180" height="62" rx="5"/><text class="t" x="660" y="369">EventBridge</text><text class="d" x="660" y="385">Alarma en OK</text><text class="d" x="660" y="398">y reconciliador cada minuto</text>
+<rect class="caja" x="340" y="345" width="150" height="62" rx="5"/><text class="t" x="415" y="369">Lambda controlador</text><text class="d" x="415" y="385">Sube un nivel si hay</text><text class="d" x="415" y="398">alarma OK y calma</text>
+<path class="lin" d="M120 76H164"/><text class="e" x="123" y="68">GET</text>
+<path class="lin" d="M295 76H339"/><text class="e" x="298" y="68">Sync</text>
+<path class="lin" d="M490 66L569 36"/><path class="lin" d="M490 80L569 92"/><path class="lin" d="M490 94L569 148"/>
+<text class="e" x="505" y="36">Según nivel</text>
+<path class="lin" d="M415 107V189"/><text class="e" x="421" y="145">Lee nivel</text><text class="e" x="421" y="158">Cuenta errores</text><text class="e" x="421" y="171">Sube nivel</text>
+<path class="lin" d="M339 221H296"/><text class="e" x="300" y="213">Stream</text>
+<path class="lin" d="M230 252V299"/><text class="e" x="236" y="279">Logs</text>
+<path d="M750 34H756V212H660" fill="none" stroke="#33414f" stroke-width="1.2"/><path d="M750 92H756M750 150H756" fill="none" stroke="#33414f" stroke-width="1.2"/><path class="lin" d="M660 212V234"/><text class="e" x="590" y="205">Métricas EMF (los 3 servicios)</text>
+<path class="lin" d="M660 297V344"/><text class="e" x="666" y="324">Estado de alarma</text>
+<path class="lin" d="M569 376H491"/><text class="e" x="503" y="368">Invoca</text>
+<path class="lin" d="M415 344V253"/><text class="e" x="421" y="302">Sube nivel y reinicia contador</text>
+</svg>
+<figcaption>Azul: componentes de cómputo y observabilidad. Amarillo: estado compartido. Todos son servicios de AWS.</figcaption>
+</figure>
+
+<h3>Transiciones entre niveles</h3>
+<figure>
+<svg viewBox="0 0 760 130" role="img" aria-label="Estados de los niveles">
+<rect class="caja" x="20" y="42" width="150" height="50" rx="5"/><text class="t" x="95" y="63">Nivel 1</text><text class="d" x="95" y="79">Full</text>
+<rect class="caja" x="305" y="42" width="150" height="50" rx="5"/><text class="t" x="380" y="63">Nivel 2</text><text class="d" x="380" y="79">Degradado</text>
+<rect class="caja" x="590" y="42" width="150" height="50" rx="5"/><text class="t" x="665" y="63">Nivel 3</text><text class="d" x="665" y="79">Operación Mínima</text>
+<path class="lin" d="M170 55H304"/><text class="d" x="237" y="46">5 errores o más</text>
+<path class="lin" d="M455 55H589"/><text class="d" x="522" y="46">10 errores o más</text>
+<path class="lin" d="M304 80H171"/><text class="d" x="237" y="96">Alarma larga OK</text><text class="d" x="237" y="109">y 50 s sin errores</text>
+<path class="lin" d="M589 80H456"/><text class="d" x="522" y="96">Alarma corta OK</text><text class="d" x="522" y="109">y 20 s sin errores</text>
+</svg>
+<figcaption>Degradar es inmediato; recuperar es lento y por etapas, a propósito.</figcaption>
+</figure>
+
+<h3>Cómo funciona</h3>
+<ul>
+<li><strong>Detecta:</strong> cada servicio indica si la petición falló. Step Functions suma 1 a un contador atómico. Los fallos de infraestructura llegan por <code>Catch</code> y también cuentan.</li>
+<li><strong>Degrada:</strong> con 5 y 10 errores, una escritura condicional sube el nivel. La petición siguiente ya va al nuevo servicio; la que cruza el umbral la atiende el nivel anterior.</li>
+<li><strong>Se recupera:</strong> dos alarmas sobre <code>Errors</code> avisan por EventBridge cuando vuelven a OK. El controlador sube un solo nivel por ejecución y reinicia el contador.</li>
+<li><strong>Registra:</strong> DynamoDB Streams activa al auditor, que escribe cada cambio con hora UTC, venga de una degradación o de una recuperación.</li>
+</ul>
+
+<h2>4. Decisiones de arquitectura</h2>
+<table>
+<tr><th style="width:14%">Decisión</th><th style="width:20%">Elegida</th><th style="width:19%">Descartadas</th><th>Por qué</th></tr>
+<tr><td>Enrutamiento</td><td>Step Functions Express</td><td>Lambda router; stage variable</td><td>Consume 1 Lambda por petición frente a 2 del router, clave con el límite de 10. El router dejaría unas 5 peticiones simultáneas. La stage variable depende del plano de control.</td></tr>
+<tr><td>Detección</td><td>Híbrida: contador para degradar y alarmas para recuperar</td><td>Solo alarmas; contador con barrido</td><td>Las alarmas tardan demasiado para degradar con exactitud en 5 y 10 errores. Para recuperar, ese retraso es aceptable y separa la decisión de la petición.</td></tr>
+<tr><td>Tipo de API</td><td>REST</td><td>HTTP API</td><td>Sus plantillas VTL limpian la salida de Step Functions y fijan el código HTTP.</td></tr>
+<tr><td>Estado</td><td>DynamoDB</td><td>Variables en Lambda</td><td>Escrituras atómicas y condicionales, y estado compartido entre ejecuciones sin servidores. Streams aporta el registro de cambios.</td></tr>
+<tr><td>Métricas</td><td>EMF en alta resolución</td><td>Llamar a <code>PutMetricData</code></td><td>Se publican desde el log, sin añadir una llamada de red a cada petición.</td></tr>
+<tr><td>Despliegue</td><td>Script con AWS CLI</td><td>CloudFormation; SAM</td><td>Cada recurso queda visible y el script se puede repetir. Se aceptó tener menos automatización.</td></tr>
+</table>
+<h3>Decisiones surgidas al construir</h3>
+<ul>
+<li><strong>Reconciliador cada minuto:</strong> una alarma emite un solo evento al volver a OK. Si se pierde, o si el fallo nunca generó métrica, el sistema quedaría degradado. En la prueba de fallo real fue él quien recuperó el sistema.</li>
+<li><strong>Mínimos de calma contra <code>ultimo_error</code>:</strong> una alarma en OK puede estar retrasada. Sin esta guarda, el reconciliador podría reiniciar el contador en plena ráfaga.</li>
+<li><strong>Sin ventanas de tiempo fijas:</strong> una ventana por minuto podría partir 15 errores en 7 y 8, y no llegar nunca a 10.</li>
+</ul>
+
+<h2 style="break-before: page">5. Tácticas de arquitectura</h2>
+<p>Nombres según la taxonomía de <em>Software Architecture in Practice</em> (Bass, Clements y Kazman).</p>
+<table>
+<tr><th style="width:17%">Categoría</th><th style="width:27%">Táctica o patrón</th><th>Aplicación</th></tr>
+<tr><td rowspan="4">Detectar fallas</td><td>Monitor</td><td>Alarmas de CloudWatch sobre la métrica <code>Errors</code>.</td></tr>
+<tr><td>Condition Monitoring</td><td>Umbrales de 5 y 10 errores y mínimos de calma.</td></tr>
+<tr><td>Exception Detection</td><td><code>Catch</code> y <code>TimeoutSeconds</code> en cada tarea.</td></tr>
+<tr><td>Timestamp</td><td><code>NIVEL_CAMBIADO</code> con hora UTC, además de <code>ultimo_error</code>.</td></tr>
+<tr><td rowspan="5">Recuperarse</td><td>Graceful Degradation</td><td>Niveles 1, 2 y 3: se descartan primero las funciones menos críticas.</td></tr>
+<tr><td>Reconfiguration</td><td>El <code>Choice</code> reasigna el trabajo al servicio del nivel activo.</td></tr>
+<tr><td>Retry</td><td>2 reintentos acotados ante throttling o fallo de servicio de Lambda.</td></tr>
+<tr><td>Exception Handling</td><td><code>Pass</code> de contingencia y respaldo en VTL: mensaje claro, sin colapsar.</td></tr>
+<tr><td>Circuit Breaker (patrón)</td><td>Nivel 3 como circuito abierto. El cierre es escalonado y exige evidencia de calma.</td></tr>
+<tr><td rowspan="2">Controlar demanda</td><td>Throttling / Manage Work Requests</td><td>Límite de tasa en API Gateway para no saturar el sistema.</td></tr>
+<tr><td>Bound Execution Times</td><td>Timeouts de 3 s en servicios y de 2 a 4 s en tareas.</td></tr>
+</table>
+
+<h2>6. Resultados de la prueba</h2>
+<p>Prueba del 2 de noviembre de 2026, con 1 usuario virtual, 140 iteraciones y una duración de 7 min 33 s.</p>
+<table>
+<tr><th>Hora UTC</th><th>Transición</th><th>Errores</th><th>Causa</th></tr>
+<tr><td>16:58:14</td><td>1 → 2</td><td>5</td><td>Bloque de 5 errores</td></tr>
+<tr><td>16:59:32</td><td>2 → 1</td><td>0</td><td>Recuperación</td></tr>
+<tr><td>17:00:24</td><td>1 → 2</td><td>5</td><td>Bloque de 15 errores</td></tr>
+<tr><td>17:00:40</td><td>2 → 3</td><td>10</td><td>Bloque de 15 errores</td></tr>
+<tr><td>17:01:45</td><td>3 → 2</td><td>0</td><td>Recuperación</td></tr>
+<tr><td>17:02:12</td><td>2 → 1</td><td>0</td><td>Recuperación</td></tr>
+<tr><td>17:02:34</td><td>1 → 2</td><td>5</td><td>Bloque de 15 errores</td></tr>
+<tr><td>17:02:50</td><td>2 → 3</td><td>10</td><td>Bloque de 15 errores</td></tr>
+<tr><td>17:03:55</td><td>3 → 2</td><td>0</td><td>Recuperación</td></tr>
+<tr><td>17:04:22</td><td>2 → 1</td><td>0</td><td>Recuperación final</td></tr>
+</table>
+<table>
+<tr><th>Medida</th><th>Valor</th></tr>
+<tr><td>Respuestas</td><td>105 con 200, 25 con 500 y 10 con 503. Ninguna 502 ni 504.</td></tr>
+<tr><td>Errores registrados</td><td>35 en k6 y 35 en CloudWatch (5 + 15 + 15).</td></tr>
+<tr><td>Mensajes de Nivel 3</td><td>29 de <em>"Operación al mínimo"</em> y 10 de <em>"Sistema bajo mantenimiento, intente más tarde"</em>.</td></tr>
+<tr><td>Latencia</td><td>Mediana de 227 ms, p95 de 326 ms y máximo de 489 ms.</td></tr>
+<tr><td>Tiempo de recuperación</td><td>Unos 46 s hasta Nivel 2 y 73 s hasta Nivel 1, medidos desde el último error en una prueba de humo.</td></tr>
+<tr><td>Fallo real</td><td>Con <code>svc-full</code> bloqueada: 5 respuestas 503 claras, paso a Nivel 2 y servicio normal desde la siguiente petición. Latencia de unos 3,5 s por respuesta durante los reintentos.</td></tr>
+</table>
+
+<h2>7. Riesgos</h2>
+<p>Puntaje de la matriz: impacto × probabilidad, cada uno de 1 a 3.</p>
+<table>
+<tr><th>Riesgo</th><th>I</th><th>P</th><th>Total</th><th>Mitigación</th></tr>
+<tr><td>Límite de 10 ejecuciones de Lambda en un pico real</td><td>3</td><td>2</td><td>6</td><td>1 Lambda por petición, throttling, Retry y contingencia. Pendiente: pedir aumento de cuota.</td></tr>
+<tr><td>DynamoDB como dependencia única, en una región</td><td>3</td><td>1</td><td>3</td><td><code>Catch</code> responde en contingencia. Pendiente: replicación entre regiones.</td></tr>
+<tr><td>Recuperación que no alcanza entre bloques de errores (unos 9 s de margen)</td><td>1</td><td>2</td><td>2</td><td>El sistema sigue cumpliendo; solo cambia la secuencia. Se puede acortar la alarma.</td></tr>
+<tr><td>Aviso de alarma perdido</td><td>2</td><td>1</td><td>2</td><td>Reconciliador cada minuto.</td></tr>
+</table>
+
+<h2>8. Limitaciones y aclaraciones</h2>
+<ul>
+<li><strong>Cambio en el script:</strong> solo se reemplazó el ID de la API en la línea 47, con autorización, porque apuntaba a otra API.</li>
+<li><strong>Duración:</strong> el script ejecuta 140 iteraciones, unos 7,5 minutos, y no 6 como indica su comentario.</li>
+<li><strong>Alcance de la prueba:</strong> el script envía unas 0,31 peticiones por segundo. Valida el comportamiento ante errores, no la capacidad bajo tráfico alto. Esa capacidad queda sin medir.</li>
+<li><strong>Observabilidad:</strong> los fallos que impiden ejecutar una Lambda degradan el sistema, pero no aparecen en la métrica <code>Errors</code>, y su recuperación depende del reconciliador (94 s en la prueba).</li>
+<li><strong>Seguridad:</strong> la API es pública porque el script no usa autenticación. Un sistema real requeriría autenticación y AWS WAF.</li>
+<li><strong>Servicios simulados:</strong> las capacidades de cada nivel son respuestas simuladas, no lógica de negocio real.</li>
+<li><strong>Códigos HTTP:</strong> 200, 500 y 503 son una decisión propia, porque el script no los valida.</li>
+</ul>
+</body>
+</html>

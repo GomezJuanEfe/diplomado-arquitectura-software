@@ -1,0 +1,19 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"],
+      "Resource": "arn:aws:logs:__REGION__:__ACCOUNT__:log-group:/aws/lambda/reto3-auditor*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "dynamodb:DescribeStream",
+        "dynamodb:GetRecords",
+        "dynamodb:GetShardIterator"
+      ],
+      "Resource": "arn:aws:dynamodb:__REGION__:__ACCOUNT__:table/reto3-estado/stream/*"
+    }
+  ]
+}
