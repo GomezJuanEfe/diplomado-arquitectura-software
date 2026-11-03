@@ -1,0 +1,378 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Panel de resiliencia - UltraSeguros</title>
+<link rel="icon" href="data:,">
+<style>
+:root {
+  color-scheme: light;
+  --fondo: #f4f4f1; --superficie: #fcfcfb; --borde: #dedcd5;
+  --texto: #0b0b0b; --texto-2: #52514e; --texto-3: #6f6e69;
+  --serie: #2a78d6; --banda: #ecece6; --rejilla: #e6e4dd; --boton-texto: #ffffff;
+  --bueno: #0ca30c; --alerta: #fab219; --critico: #d03b3b;
+  --bueno-txt: #006300; --alerta-txt: #7a5200; --critico-txt: #b02a2a;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --fondo: #111110; --superficie: #1a1a19; --borde: #33332f;
+    --texto: #f0efec; --texto-2: #c3c2b7; --texto-3: #9a998f;
+    --serie: #3987e5; --banda: #272724; --rejilla: #2c2c29; --boton-texto: #ffffff;
+    --bueno-txt: #0ca30c; --alerta-txt: #fab219; --critico-txt: #e66767;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--fondo); color: var(--texto); font: 15px/1.4 system-ui, "Segoe UI", Roboto, sans-serif; }
+.pagina { max-width: 1320px; margin: 0 auto; padding: 18px 20px 28px; }
+header { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+h1 { font-size: 22px; margin: 0; }
+.sub { color: var(--texto-2); font-size: 14px; margin: 2px 0 0; min-height: 20px; }
+.acciones { display: flex; gap: 8px; align-items: center; }
+button { font: 600 15px system-ui, sans-serif; padding: 9px 18px; border-radius: 6px; border: 1px solid var(--borde); background: var(--superficie); color: var(--texto); cursor: pointer; }
+button.primario { background: var(--serie); border-color: var(--serie); color: var(--boton-texto); }
+button:disabled { opacity: .5; cursor: not-allowed; }
+.aviso { background: var(--superficie); border: 1px solid var(--critico); border-left-width: 4px; border-radius: 6px; padding: 8px 12px; margin-bottom: 12px; font-size: 14px; }
+.tiles { display: grid; grid-template-columns: 1.5fr repeat(5, 1fr); gap: 10px; margin-bottom: 10px; }
+.tile, .tarjeta { background: var(--superficie); border: 1px solid var(--borde); border-radius: 8px; }
+.tile { padding: 10px 14px; min-width: 0; }
+.etiqueta { color: var(--texto-2); font-size: 13px; }
+.valor { font-size: 34px; font-weight: 700; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.valor small { font-size: 16px; font-weight: 500; color: var(--texto-2); }
+.nota { color: var(--texto-3); font-size: 12.5px; }
+.nivel { display: flex; align-items: center; gap: 12px; }
+.icono { width: 44px; height: 44px; flex: none; border-radius: 50%; display: grid; place-items: center; font-size: 22px; font-weight: 800; background: var(--banda); color: var(--texto-2); }
+.nivel[data-n="1"] .icono { background: var(--bueno); color: #fff; }
+.nivel[data-n="2"] .icono { background: var(--alerta); color: #0b0b0b; }
+.nivel[data-n="3"] .icono { background: var(--critico); color: #fff; }
+.alarma { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; margin-top: 3px; }
+.alarma b { font-weight: 700; }
+.alarma b[data-e="ALARM"] { color: var(--critico-txt); }
+.alarma b[data-e="OK"] { color: var(--bueno-txt); }
+.medidor { position: relative; height: 8px; background: var(--banda); border-radius: 4px; margin: 8px 0 3px; }
+.medidor i { position: absolute; inset: 0 auto 0 0; background: var(--serie); border-radius: 4px; width: 0; }
+.medidor span { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--texto-2); }
+.tarjeta { padding: 10px 14px 8px; margin-bottom: 10px; }
+.tarjeta h2 { font-size: 14.5px; margin: 0 0 2px; font-weight: 600; }
+.tarjeta h2 span { color: var(--texto-2); font-weight: 400; }
+svg.grafico { display: block; width: 100%; }
+.columnas { display: grid; grid-template-columns: 2fr 3fr; gap: 10px; }
+table { width: 100%; border-collapse: collapse; font-size: 13.5px; font-variant-numeric: tabular-nums; }
+th { text-align: left; color: var(--texto-2); font-weight: 500; border-bottom: 1px solid var(--borde); padding: 3px 6px; }
+td { padding: 3px 6px; border-bottom: 1px solid var(--rejilla); vertical-align: top; }
+.lista { max-height: 250px; overflow: auto; }
+.vacio { color: var(--texto-3); font-size: 14px; padding: 8px 6px; }
+.secuencia { font-size: 14px; margin: 4px 6px 8px; overflow-wrap: anywhere; }
+#tooltip { position: fixed; z-index: 5; pointer-events: none; background: var(--superficie); border: 1px solid var(--borde); border-radius: 6px; padding: 7px 10px; font-size: 13px; box-shadow: 0 3px 12px rgb(0 0 0 / .18); max-width: 320px; }
+#tooltip b { display: block; }
+@media (max-width: 1050px) { .tiles { grid-template-columns: repeat(2, 1fr); } .nivel-tile { grid-column: 1 / -1; } .columnas { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="pagina">
+  <header>
+    <div>
+      <h1>Panel de resiliencia · UltraSeguros</h1>
+      <p class="sub" id="estadoPrueba">Conectando…</p>
+    </div>
+    <div class="acciones">
+      <button id="detener" hidden>Detener</button>
+      <button id="iniciar" class="primario" disabled>Iniciar prueba k6</button>
+    </div>
+  </header>
+  <div class="aviso" id="aviso" hidden></div>
+
+  <section class="tiles">
+    <div class="tile nivel-tile">
+      <div class="etiqueta">Nivel de servicio actual</div>
+      <div class="nivel" id="nivelBox"><div class="icono" id="nivelIcono">?</div>
+        <div><div class="valor" id="nivelNombre">Sin datos</div><div class="nota" id="nivelNota">Leído de DynamoDB</div></div>
+      </div>
+    </div>
+    <div class="tile"><div class="etiqueta">Contador de errores</div><div class="valor" id="errores">–</div><div class="nota">Umbrales: 5 y 10</div></div>
+    <div class="tile"><div class="etiqueta">Sin errores</div><div class="valor"><span id="calma">–</span> <small>s</small></div>
+      <div class="medidor"><i id="calmaBarra"></i><span style="left:25%"></span><span style="left:62.5%"></span></div><div class="nota" id="calmaNota">Calma mínima: 20 s y 50 s</div></div>
+    <div class="tile"><div class="etiqueta">Alarmas de recuperación</div>
+      <div class="alarma"><span>Corta</span><b id="alarmaL3">–</b></div>
+      <div class="alarma"><span>Larga</span><b id="alarmaL2">–</b></div></div>
+    <div class="tile"><div class="etiqueta">Peticiones</div><div class="valor"><span id="total">0</span><small> / 140</small></div><div class="nota" id="codigos">Sin respuestas</div></div>
+    <div class="tile"><div class="etiqueta">Latencia mediana</div><div class="valor"><span id="mediana">–</span> <small>ms</small></div><div class="nota" id="p95">p95: –</div></div>
+  </section>
+
+  <section class="tarjeta"><h2>Nivel que respondió cada petición <span>· bandas: bloques de errores del script</span></h2><svg class="grafico" id="gNivel" height="170"></svg></section>
+  <section class="tarjeta"><h2>Contador de errores <span>· en DynamoDB, con los umbrales de degradación</span></h2><svg class="grafico" id="gErrores" height="150"></svg></section>
+  <section class="tarjeta"><h2>Latencia por petición <span>· milisegundos medidos por k6</span></h2><svg class="grafico" id="gLatencia" height="150"></svg></section>
+
+  <section class="columnas">
+    <div class="tarjeta"><h2>Transiciones registradas <span>· log del auditor</span></h2>
+      <div class="secuencia" id="secuencia"></div>
+      <div class="lista"><table><thead><tr><th>Hora</th><th>Cambio</th><th>Errores</th></tr></thead><tbody id="filasTransiciones"></tbody></table><div class="vacio" id="sinTransiciones">Aún no hay transiciones.</div></div></div>
+    <div class="tarjeta"><h2>Últimas respuestas</h2>
+      <div class="lista"><table><thead><tr><th>#</th><th>Enviada</th><th>HTTP</th><th>Mensaje</th></tr></thead><tbody id="filasRespuestas"></tbody></table><div class="vacio" id="sinRespuestas">Aún no hay respuestas.</div></div></div>
+  </section>
+</div>
+<div id="tooltip" hidden></div>
+
+<script>
+const ITERACIONES = 140;
+// Bloques de errores definidos en el script k6, para anticipar donde va a caer el sistema.
+const BLOQUES = [[1, 5], [41, 55], [81, 95]];
+const NOMBRES = { 1: "Full", 2: "Degradado", 3: "Operación Mínima" };
+const CALMA_MAX = 80;
+const $ = (id) => document.getElementById(id);
+
+let peticiones = [];   // indice = iteracion
+let latencias = [];    // indice = numero de peticion
+let contador = [];     // indice = iteracion
+let transiciones = [];
+let estado = {};
+let fase = "espera";
+let cursor = null;
+let pendiente = false;
+
+function reiniciar() {
+  peticiones = []; latencias = []; contador = []; transiciones = [];
+  $("filasTransiciones").replaceChildren();
+  $("filasRespuestas").replaceChildren();
+  fase = "espera";
+  programar();
+}
+
+function programar() {
+  if (pendiente) return;
+  pendiente = true;
+  requestAnimationFrame(() => { pendiente = false; pintar(); });
+}
+
+function ultimaIteracion() { return peticiones.length ? peticiones.length - 1 : 0; }
+
+function percentil(valores, p) {
+  const orden = [...valores].sort((a, b) => a - b);
+  return orden[Math.min(orden.length - 1, Math.floor(p * orden.length))];
+}
+
+function grafico(id, cfg) {
+  const svg = $(id);
+  const W = Math.max(svg.clientWidth, 320), H = Number(svg.getAttribute("height"));
+  const m = { l: 100, r: 14, t: 10, b: 22 };
+  const x = (i) => m.l + (i - 1) / (ITERACIONES - 1) * (W - m.l - m.r);
+  const y = (v) => m.t + (cfg.invertido ? (v - cfg.min) / (cfg.max - cfg.min) : (cfg.max - v) / (cfg.max - cfg.min)) * (H - m.t - m.b);
+  let s = "";
+  for (const [a, b] of BLOQUES) s += `<rect x="${x(a)}" y="${m.t}" width="${x(b) - x(a)}" height="${H - m.t - m.b}" fill="var(--banda)"/>`;
+  for (const t of cfg.marcas) {
+    s += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(t.v)}" y2="${y(t.v)}" stroke="var(--rejilla)"/>`;
+    s += `<text x="${m.l - 8}" y="${y(t.v) + 4}" text-anchor="end" font-size="12" fill="var(--texto-2)">${t.t}</text>`;
+  }
+  for (const r of cfg.umbrales || []) {
+    s += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(r.v)}" y2="${y(r.v)}" stroke="var(--texto-2)" stroke-dasharray="5 4"/>`;
+    s += `<text x="${W - m.r - 4}" y="${y(r.v) - 4}" text-anchor="end" font-size="12" fill="var(--texto-2)">${r.t}</text>`;
+  }
+  for (const i of [1, 20, 40, 60, 80, 100, 120, 140]) s += `<text x="${x(i)}" y="${H - 6}" text-anchor="middle" font-size="12" fill="var(--texto-2)">${i}</text>`;
+  const puntos = [];
+  cfg.valores.forEach((v, i) => { if (v !== undefined && v !== null) puntos.push([i, v]); });
+  if (puntos.length) {
+    let d = "", previo = null;
+    for (const [i, v] of puntos) {
+      if (!previo) d = `M${x(i)} ${y(v)}`;
+      else if (cfg.escalon) d += `H${x(i)}V${y(v)}`;
+      else d += `L${x(i)} ${y(v)}`;
+      previo = [i, v];
+    }
+    s += `<path d="${d}" fill="none" stroke="var(--serie)" stroke-width="2" stroke-linejoin="round"/>`;
+    s += `<circle cx="${x(previo[0])}" cy="${y(previo[1])}" r="4.5" fill="var(--serie)" stroke="var(--superficie)" stroke-width="2"/>`;
+  } else {
+    s += `<text x="${(m.l + W - m.r) / 2}" y="${H / 2}" text-anchor="middle" font-size="13" fill="var(--texto-3)">Sin datos todavía</text>`;
+  }
+  if (cursor) s += `<line x1="${x(cursor)}" x2="${x(cursor)}" y1="${m.t}" y2="${H - m.b}" stroke="var(--texto-2)"/>`;
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  svg.innerHTML = s;
+  svg._aIteracion = (px) => Math.max(1, Math.min(ITERACIONES, Math.round((px - m.l) / (W - m.l - m.r) * (ITERACIONES - 1)) + 1));
+}
+
+function latenciaDe(i) { return latencias[i]; }
+
+function pintarGraficos() {
+  grafico("gNivel", {
+    min: 0.7, max: 3.3, invertido: true, escalon: true,
+    marcas: [1, 2, 3].map((n) => ({ v: n, t: `${n} ${n === 3 ? "Mínimo" : NOMBRES[n]}` })),
+    valores: peticiones.map((p) => p && p.nivel),
+  });
+  const maxErr = Math.max(16, ...contador.filter((v) => v !== undefined));
+  grafico("gErrores", {
+    min: 0, max: maxErr, escalon: true,
+    marcas: [0, 5, 10, 15].map((v) => ({ v, t: v })),
+    umbrales: [{ v: 5, t: "Pasa a Nivel 2" }, { v: 10, t: "Pasa a Nivel 3" }],
+    valores: contador,
+  });
+  const ms = latencias.filter((v) => v !== undefined);
+  const techo = Math.max(500, Math.ceil(Math.max(0, ...ms) / 250) * 250);
+  grafico("gLatencia", {
+    min: 0, max: techo,
+    marcas: [0, techo / 2, techo].map((v) => ({ v, t: v })),
+    valores: latencias,
+  });
+}
+
+function pintarTiles() {
+  const n = estado.nivel;
+  $("nivelBox").dataset.n = n ?? "";
+  $("nivelIcono").textContent = n ?? "?";
+  $("nivelNombre").textContent = n ? `Nivel ${n}` : "Sin datos";
+  $("nivelNota").textContent = n ? `${NOMBRES[n]} · leído de DynamoDB` : "Leído de DynamoDB";
+  $("errores").textContent = estado.errores ?? "–";
+  const al = estado.alarmas || {};
+  for (const [id, nombre] of [["alarmaL3", "reto3-recupera-l3"], ["alarmaL2", "reto3-recupera-l2"]]) {
+    const valor = al[nombre] ?? "–";
+    $(id).dataset.e = valor;
+    $(id).textContent = valor === "INSUFFICIENT_DATA" ? "SIN DATOS" : valor;
+  }
+  pintarCalma();
+
+  const hechas = peticiones.filter(Boolean);
+  $("total").textContent = hechas.length;
+  if (hechas.length) {
+    const c = {};
+    hechas.forEach((p) => { c[p.status] = (c[p.status] || 0) + 1; });
+    $("codigos").textContent = Object.keys(c).sort().map((k) => `${k}: ${c[k]}`).join(" · ");
+  } else { $("codigos").textContent = "Sin respuestas"; }
+  const ms = latencias.filter((v) => v !== undefined);
+  $("mediana").textContent = ms.length ? Math.round(percentil(ms, 0.5)) : "–";
+  $("p95").textContent = ms.length ? `p95: ${Math.round(percentil(ms, 0.95))} ms` : "p95: –";
+
+  const seq = transiciones.length ? [transiciones[0].desde, ...transiciones.map((t) => t.hacia)].join(" → ") : "";
+  $("secuencia").textContent = seq ? `Secuencia: ${seq}` : "";
+  $("sinTransiciones").hidden = transiciones.length > 0;
+  $("sinRespuestas").hidden = hechas.length > 0;
+
+  const it = hechas.length;
+  const texto = {
+    espera: estado.corriendo ? "Preparando k6…" : (estado.bloqueo || "Listo para iniciar la prueba."),
+    sincronizando: "k6 espera al segundo 00 para enviar la primera petición…",
+    cerrando: `Peticiones completas (${it}). k6 está cerrando: puede tardar hasta un minuto.`,
+    enviando: `Prueba en curso · iteración ${it} de ${ITERACIONES} · minuto ${hechas.length ? hechas[it - 1].minuto : 1} del script`,
+    terminada: `Prueba terminada · ${it} peticiones. ${estado.bloqueo ? "Esperando a que el sistema se recupere." : "Listo para otra prueba."}`,
+    deteniendo: "Deteniendo k6…",
+    detenida: "Prueba detenida. El sistema se recupera solo.",
+    fallida: "La prueba no pudo completarse.",
+  };
+  $("estadoPrueba").textContent = texto[fase];
+  $("iniciar").disabled = Boolean(estado.bloqueo) || estado.corriendo === undefined;
+  $("iniciar").title = estado.bloqueo || "";
+  $("detener").hidden = !estado.corriendo;
+
+  const leido = estado.leido_en ? (Date.now() - Date.parse(estado.leido_en)) / 1000 : Infinity;
+  const viejo = estado.corriendo !== undefined && leido > 12;
+  $("aviso").hidden = !(estado.error_aws || viejo);
+  $("aviso").textContent = "Los datos de AWS pueden estar desactualizados: revisa las credenciales o la conexión.";
+}
+
+function pintarCalma() {
+  const ue = estado.ultimo_error;
+  if (!ue) { $("calma").textContent = "–"; $("calmaBarra").style.width = "0"; return; }
+  const seg = Math.max(0, (Date.now() - Date.parse(ue)) / 1000);
+  $("calma").textContent = seg >= 600 ? "+600" : Math.floor(seg);
+  $("calmaBarra").style.width = `${Math.min(100, seg / CALMA_MAX * 100)}%`;
+}
+
+function pintar() { pintarTiles(); pintarGraficos(); }
+
+function agregarFila(tbody, celdas) {
+  const fila = document.createElement("tr");
+  for (const texto of celdas) {
+    const celda = document.createElement("td");
+    celda.textContent = texto;
+    fila.append(celda);
+  }
+  tbody.prepend(fila);
+}
+
+function mostrarTooltip(ev, i) {
+  const t = $("tooltip"), p = peticiones[i];
+  t.replaceChildren();
+  const titulo = document.createElement("b");
+  titulo.textContent = `Iteración ${i}`;
+  t.append(titulo);
+  const lineas = p
+    ? [`Nivel que respondió: ${p.nivel ?? "?"}`, `HTTP ${p.status}${p.error ? " · error intencional" : ""}`,
+       `Latencia: ${latenciaDe(i) !== undefined ? Math.round(latenciaDe(i)) + " ms" : "sin dato"}`,
+       `Contador: ${contador[i] ?? "sin lectura"}`, p.mensaje]
+    : ["Aún sin datos"];
+  for (const l of lineas) { const d = document.createElement("div"); d.textContent = l; t.append(d); }
+  t.hidden = false;
+  const ancho = t.offsetWidth;
+  t.style.left = `${Math.min(ev.clientX + 14, innerWidth - ancho - 8)}px`;
+  t.style.top = `${ev.clientY + 14}px`;
+}
+
+for (const id of ["gNivel", "gErrores", "gLatencia"]) {
+  const svg = $(id);
+  svg.addEventListener("mousemove", (ev) => {
+    const r = svg.getBoundingClientRect();
+    if (!svg._aIteracion) return;
+    cursor = svg._aIteracion(ev.clientX - r.left);
+    mostrarTooltip(ev, cursor);
+    programar();
+  });
+  svg.addEventListener("mouseleave", () => { cursor = null; $("tooltip").hidden = true; programar(); });
+}
+
+const fuente = new EventSource("/api/eventos");
+fuente.addEventListener("reinicio", reiniciar);
+fuente.addEventListener("inicio", () => { fase = "espera"; programar(); });
+// k6 repite el init del script al cerrar, asi que esta espera tambien ocurre al final.
+fuente.addEventListener("espera", () => { fase = peticiones.length ? "cerrando" : "sincronizando"; programar(); });
+fuente.addEventListener("peticion", (e) => {
+  const p = JSON.parse(e.data);
+  peticiones[p.iteracion] = p;
+  fase = "enviando";
+  if (p.contador !== null) contador[p.iteracion] = p.contador;
+  agregarFila($("filasRespuestas"), [p.iteracion, p.error ? "con error" : "normal", p.status, p.mensaje]);
+  programar();
+});
+fuente.addEventListener("latencia", (e) => { const d = JSON.parse(e.data); latencias[d.numero] = d.ms; programar(); });
+fuente.addEventListener("transicion", (e) => {
+  const t = JSON.parse(e.data);
+  transiciones.push(t);
+  transiciones.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+  $("filasTransiciones").replaceChildren();
+  for (const x of transiciones) agregarFila($("filasTransiciones"), [new Date(x.timestamp).toLocaleTimeString("es-CO"), `${x.desde} → ${x.hacia}`, x.errores]);
+  programar();
+});
+fuente.addEventListener("estado", (e) => {
+  estado = JSON.parse(e.data);
+  const i = ultimaIteracion();
+  if (i && fase === "enviando" && estado.errores !== null) contador[i] = estado.errores;
+  programar();
+});
+fuente.addEventListener("fin", (e) => {
+  $("detener").disabled = false;
+  const d = JSON.parse(e.data);
+  if (d.detalle) $("estadoPrueba").title = d.detalle;
+  const completa = peticiones.filter(Boolean).length === ITERACIONES;
+  fase = d.codigo === 0 && completa ? "terminada" : (d.codigo === -1 ? "fallida" : "detenida");
+  programar();
+});
+fuente.onerror = () => { $("estadoPrueba").textContent = "Sin conexión con el panel. Reintentando…"; };
+
+async function accion(ruta) {
+  const r = await fetch(ruta, { method: "POST", headers: { "X-Panel": "1" } });
+  if (!r.ok) {
+    const d = await r.json().catch(() => ({}));
+    $("aviso").hidden = false;
+    $("aviso").textContent = d.error || "El panel rechazó la acción.";
+  }
+}
+$("iniciar").addEventListener("click", () => accion("/api/iniciar"));
+$("detener").addEventListener("click", () => {
+  $("detener").disabled = true;
+  fase = "deteniendo";
+  programar();
+  accion("/api/detener");
+});
+addEventListener("resize", programar);
+setInterval(() => { pintarCalma(); }, 500);
+setInterval(programar, 5000);
+</script>
+</body>
+</html>

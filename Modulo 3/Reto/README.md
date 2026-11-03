@@ -35,6 +35,21 @@ aws logs tail /aws/lambda/reto3-auditor --region us-east-1 --since 15m --filter-
 
 El dashboard de CloudWatch se llama `reto3-resiliencia`.
 
+## Panel local
+
+Herramienta de demostración para lanzar k6 y seguir el sistema en tiempo real. No es parte de la
+solución en AWS ni del ZIP de entrega. Usa solo la librería estándar de Python, la CLI `aws` y k6.
+
+```bash
+python3 panel/servidor.py
+```
+
+Abre `http://127.0.0.1:8091`; las diapositivas interactivas de la exposición están en
+`http://127.0.0.1:8091/slides` y se navegan con las flechas (F: pantalla completa). El botón se habilita cuando el sistema está en nivel 1 con 0 errores.
+El contador se lee cada 3 s, así que puede ir una petición por detrás; la secuencia exacta es la de
+"Transiciones registradas", que llega con unos segundos de retraso. Tras la última petición, k6
+puede tardar hasta un minuto en cerrar, porque el script repite su espera al segundo 00.
+
 ## Eliminar
 
 ```bash

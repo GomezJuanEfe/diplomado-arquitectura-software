@@ -1,0 +1,570 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Arquitectura resiliente - UltraSeguros</title>
+<link rel="icon" href="data:,">
+<style>
+:root {
+  color-scheme: light;
+  --fondo: #f4f4f1; --superficie: #fcfcfb; --borde: #dedcd5;
+  --texto: #0b0b0b; --texto-2: #52514e; --texto-3: #6f6e69;
+  --serie: #2a78d6; --banda: #ecece6; --rejilla: #e6e4dd; --marca: #dcebfb;
+  --bueno: #0ca30c; --alerta: #fab219; --critico: #d03b3b;
+  --bueno-txt: #006300; --alerta-txt: #7a5200; --critico-txt: #b02a2a;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --fondo: #111110; --superficie: #1a1a19; --borde: #33332f;
+    --texto: #f0efec; --texto-2: #c3c2b7; --texto-3: #9a998f;
+    --serie: #3987e5; --banda: #272724; --rejilla: #2c2c29; --marca: #1d3550;
+    --bueno-txt: #0ca30c; --alerta-txt: #fab219; --critico-txt: #e66767;
+  }
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--fondo); color: var(--texto); font: 400 clamp(13px, 2.5vmin, 38px)/1.4 system-ui, "Segoe UI", Roboto, sans-serif; overflow: hidden; }
+.slide { position: absolute; inset: 0 0 2.6em 0; padding: 2.2em 5vw 1em; display: none; flex-direction: column; gap: .7em; overflow: auto; }
+.slide.activa { display: flex; }
+h1 { font-size: 3.1em; line-height: 1.12; margin: 0; }
+h2 { font-size: 1.95em; line-height: 1.15; margin: 0; }
+h3 { font-size: 1.05em; margin: 0 0 .25em; }
+p { margin: 0; }
+ul { margin: 0; padding-left: 1.2em; }
+li { margin-bottom: .35em; }
+.sub { color: var(--texto-2); font-size: 1.1em; }
+.nota { color: var(--texto-3); font-size: .82em; }
+.portada { justify-content: center; }
+.cuerpo { display: grid; gap: 1em; align-items: start; }
+.cuerpo.estirar { flex: 1; min-height: 0; align-items: stretch; }
+.cuerpo:not(.estirar) .tarjeta { font-size: 1.22em; }
+.dos { grid-template-columns: 1fr 1fr; }
+.dosuno { grid-template-columns: 1.75fr 1fr; }
+.tarjeta { background: var(--superficie); border: 1px solid var(--borde); border-radius: .5em; padding: .75em 1em; min-width: 0; }
+.cifra { font-size: 2.3em; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.cifras { display: grid; grid-template-columns: repeat(4, 1fr); gap: .7em; }
+button { font: 600 .92em system-ui, sans-serif; padding: .42em .85em; border-radius: .35em; border: 1px solid var(--borde); background: var(--superficie); color: var(--texto); cursor: pointer; }
+button.activo, button.primario { background: var(--serie); border-color: var(--serie); color: #fff; }
+button:disabled { opacity: .5; cursor: not-allowed; }
+button:focus-visible { outline: 2px solid var(--serie); outline-offset: 2px; }
+.botones { display: flex; flex-wrap: wrap; gap: .45em; }
+table { width: 100%; border-collapse: collapse; font-size: .9em; }
+th { text-align: left; color: var(--texto-2); font-weight: 500; border-bottom: 1px solid var(--borde); padding: .2em .4em; }
+td { border-bottom: 1px solid var(--rejilla); padding: .28em .4em; vertical-align: top; }
+svg { display: block; width: 100%; height: 100%; }
+svg text { font-family: system-ui, "Segoe UI", Roboto, sans-serif; fill: var(--texto-2); }
+.nodo { cursor: pointer; }
+.nodo rect { fill: var(--superficie); stroke: var(--texto-3); stroke-width: 1.2; transition: fill .2s, stroke .2s; }
+.nodo.datos rect { stroke-dasharray: 5 3; }
+.nodo.encendido rect { fill: var(--marca); stroke: var(--serie); stroke-width: 2.5; }
+.nodo .t { font-size: 13px; font-weight: 700; fill: var(--texto); text-anchor: middle; }
+.nodo .d { font-size: 10.5px; text-anchor: middle; }
+.flecha { stroke: var(--texto-3); stroke-width: 1.2; fill: none; marker-end: url(#punta); }
+.nivel { display: flex; align-items: center; gap: .6em; }
+.icono { width: 2.2em; height: 2.2em; flex: none; border-radius: 50%; display: grid; place-items: center; font-size: 1.15em; font-weight: 800; background: var(--banda); color: var(--texto-2); }
+[data-n="1"] > .icono { background: var(--bueno); color: #fff; }
+[data-n="2"] > .icono { background: var(--alerta); color: #0b0b0b; }
+[data-n="3"] > .icono { background: var(--critico); color: #fff; }
+.pasos { display: flex; align-items: center; gap: .4em; flex-wrap: wrap; font-size: .92em; }
+.pasos span { border: 1px solid var(--borde); border-radius: .35em; padding: .2em .5em; background: var(--superficie); color: var(--texto-3); }
+.pasos span.hecho { color: var(--texto); }
+.pasos span.ahora { background: var(--serie); border-color: var(--serie); color: #fff; }
+.respuesta { font-family: ui-monospace, monospace; font-size: .86em; background: var(--banda); border-radius: .35em; padding: .45em .6em; min-height: 2.8em; overflow-wrap: anywhere; }
+.matriz { display: grid; grid-template-columns: 2.2em repeat(3, 1fr); grid-template-rows: repeat(3, 1fr) 1.7em; gap: .3em; height: 100%; min-height: 15em; }
+.celda { border-radius: .35em; display: flex; flex-wrap: wrap; gap: .3em; align-items: center; justify-content: center; position: relative; border: 2px solid transparent; background: var(--banda); }
+.celda small { position: absolute; top: .15em; left: .4em; color: var(--texto-2); font-size: .72em; }
+.celda[data-g="medio"] { border-color: var(--alerta); }
+.celda[data-g="alto"] { border-color: var(--critico); }
+.eje { color: var(--texto-2); font-size: .8em; display: flex; align-items: center; justify-content: center; }
+.eje.v { writing-mode: vertical-rl; transform: rotate(180deg); }
+.punto { padding: .2em .55em; border-radius: 1em; }
+#pie { position: fixed; left: 0; right: 0; bottom: 0; height: 2.6em; display: flex; align-items: center; gap: .7em; padding: 0 5vw; font-size: .82em; color: var(--texto-3); }
+#pie button { padding: .15em .7em; }
+#barra { flex: 1; height: 4px; background: var(--banda); border-radius: 2px; overflow: hidden; }
+#barra i { display: block; height: 100%; width: 0; background: var(--serie); transition: width .2s; }
+#tip { position: fixed; z-index: 9; pointer-events: none; background: var(--superficie); border: 1px solid var(--borde); border-radius: .35em; padding: .4em .6em; font-size: .85em; box-shadow: 0 3px 12px rgb(0 0 0 / .2); max-width: 22em; }
+@media (max-width: 800px) { .dos, .dosuno, .cifras { grid-template-columns: 1fr 1fr; } .dos, .dosuno { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<section class="slide portada">
+  <p class="sub">Reto Módulo 3 · Sistemas UltraSeguros S.A.</p>
+  <h1>Arquitectura resiliente por niveles de servicio</h1>
+  <p class="sub">Diplomado de Arquitectura de Software y Cloud Computing<br>Juan F. Gomez · Noviembre de 2026</p>
+  <p class="nota" style="margin-top:2em">Avanza con las flechas ← → · F: pantalla completa</p>
+</section>
+
+<section class="slide">
+  <h2>El problema: bajo carga, el sistema falla</h2>
+  <div class="cuerpo dos">
+    <div class="tarjeta">
+      <h3>Lo que pide el negocio</h3>
+      <ul>
+        <li>Los servicios críticos siguen operando ante fallos.</li>
+        <li>Se recupera sin intervención humana.</li>
+        <li>Cada cambio de nivel queda registrado.</li>
+      </ul>
+    </div>
+    <div class="tarjeta">
+      <h3>Lo que condiciona el diseño</h3>
+      <ul>
+        <li>Solo servicios de AWS, con API Gateway como entrada.</li>
+        <li>3 servicios y umbrales de 5 y 10 errores.</li>
+        <li><strong>Límite de 10 Lambdas concurrentes</strong>, sin poder reservar: cada Lambda extra por petición reduce la capacidad.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="slide">
+  <h2>Atributo priorizado: Disponibilidad</h2>
+  <p class="sub">El sistema se degrada de a poco, tratando siempre de seguir funcionando en todo lo que puede.</p>
+  <div class="botones" id="compara"><button data-m="todo">Sin degradación</button><button data-m="poco" class="activo">Con degradación progresiva</button></div>
+  <div class="cuerpo dos">
+    <div class="tarjeta"><h3 id="compTitulo"></h3><table id="compTabla"></table></div>
+    <div class="tarjeta">
+      <h3>A cambio se acepta</h3>
+      <ul><li>Latencia de orquestar cada petición: mediana de 227 ms.</li>
+      <li>Unos 3,5 s en contingencia, por los reintentos.</li>
+      <li>Más lógica de control que mantener.</li></ul>
+    </div>
+  </div>
+</section>
+
+<section class="slide">
+  <h2>Arquitectura: sigue el recorrido</h2>
+  <div class="botones" id="escenarios"></div>
+  <div class="cuerpo dosuno estirar">
+    <div class="tarjeta"><svg id="arq" viewBox="0 0 760 420" role="img" aria-label="Diagrama de contenedores"></svg></div>
+    <div style="display:flex;flex-direction:column;gap:.6em;min-height:0">
+      <div class="tarjeta"><h3 id="infoTitulo">Haz clic en un componente</h3><p id="infoTexto" class="sub" style="font-size:.92em">También puedes elegir un escenario arriba.</p></div>
+      <div class="tarjeta"><h3>Paso a paso</h3><p id="pasoTexto" style="font-size:.92em"></p>
+        <div class="botones" style="margin-top:.6em"><button id="pasoAtras">← Anterior</button><button id="pasoAdelante" class="primario">Siguiente →</button></div>
+        <p class="nota" style="margin-top:.4em">También con las teclas ↑ ↓</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="slide">
+  <h2>Simulador: envía errores y mira cómo reacciona</h2>
+  <p class="nota">Simulación en esta página, con los umbrales reales y los tiempos medidos (46 s y 73 s). No toca AWS.</p>
+  <div class="botones">
+    <button id="simOk">Petición normal</button><button id="simError">Petición con error</button>
+    <button id="simEspera">Esperar 10 s sin errores</button><button id="simReset">Reiniciar</button>
+  </div>
+  <div class="cuerpo dos">
+    <div class="tarjeta" style="display:flex;flex-direction:column;gap:.7em">
+      <div class="nivel" id="simNivel" data-n="1"><div class="icono" id="simIcono">1</div><div><div class="cifra" style="font-size:1.7em" id="simNombre"></div></div></div>
+      <div class="cifras" style="grid-template-columns:1fr 1fr">
+        <div><div class="nota">Contador de errores</div><div class="cifra" id="simErrores">0</div></div>
+        <div><div class="nota">Sin errores</div><div class="cifra"><span id="simCalma">–</span> s</div></div>
+      </div>
+      <div><div class="nota">Respuesta</div><div class="respuesta" id="simRespuesta">Envía una petición.</div></div>
+    </div>
+    <div class="tarjeta"><h3>Registro de cambios</h3><table><tbody id="simLog"></tbody></table><p class="nota" id="simVacio">Aún sin transiciones.</p></div>
+  </div>
+</section>
+
+<section class="slide">
+  <h2>Decisiones de arquitectura</h2>
+  <div class="botones" id="decTabs"></div>
+  <div class="cuerpo dos">
+    <div class="tarjeta"><div class="nota">Elegida</div><div class="cifra" style="font-size:1.45em" id="decElegida"></div><p class="nota" style="margin-top:.5em">Descartadas: <span id="decOtras"></span></p></div>
+    <div class="tarjeta"><h3>Por qué</h3><p id="decPorque"></p></div>
+  </div>
+  <div class="tarjeta"><h3>Surgieron al construir</h3>
+    <p><strong>Reconciliador</strong>, porque una alarma avisa una sola vez. <strong>Mínimos de calma</strong>, porque una alarma en OK puede ir retrasada. <strong>Sin ventanas fijas</strong>, porque partirían 15 errores en 7 y 8.</p></div>
+</section>
+
+<section class="slide">
+  <h2>Tácticas de arquitectura</h2>
+  <div class="botones" id="tacTabs"></div>
+  <div class="cuerpo" style="align-content:start"><div class="tarjeta"><table><thead><tr><th style="width:32%">Táctica o patrón</th><th>Cómo se aplica</th></tr></thead><tbody id="tacFilas"></tbody></table></div></div>
+  <p class="nota">Taxonomía de <em>Software Architecture in Practice</em> (Bass, Clements y Kazman).</p>
+</section>
+
+<section class="slide">
+  <h2>Demo en vivo: k6 real contra AWS</h2>
+  <div class="botones" style="align-items:center">
+    <button id="vivoIniciar" class="primario" disabled>Iniciar prueba k6</button><button id="vivoDetener" hidden>Detener</button>
+    <span class="nota" id="vivoEstado">Conectando con el panel…</span>
+  </div>
+  <div class="cifras">
+    <div class="tarjeta"><div class="nivel" id="vivoNivel"><div class="icono" id="vivoIcono">?</div><div><div class="nota">Nivel actual</div><strong id="vivoNombre">Sin datos</strong></div></div></div>
+    <div class="tarjeta"><div class="nota">Contador de errores</div><div class="cifra" id="vivoErrores">–</div></div>
+    <div class="tarjeta"><div class="nota">Peticiones</div><div class="cifra"><span id="vivoTotal">0</span><small style="font-size:.5em"> / 140</small></div></div>
+    <div class="tarjeta"><div class="nota">Alarmas (corta / larga)</div><strong id="vivoAlarmas">–</strong></div>
+  </div>
+  <div class="cuerpo estirar"><div class="tarjeta" style="min-height:9em"><svg id="vivoGrafico" preserveAspectRatio="none"></svg></div></div>
+  <p class="nota" id="vivoSecuencia" style="margin:0">Secuencia: –</p>
+</section>
+
+<section class="slide">
+  <h2>Resultados de la prueba</h2>
+  <div class="cifras">
+    <div class="tarjeta"><div class="nota">Respondidas</div><div class="cifra">140/140</div></div>
+    <div class="tarjeta"><div class="nota">502 o 504</div><div class="cifra">0</div></div>
+    <div class="tarjeta"><div class="nota">Transiciones</div><div class="cifra">10/10</div></div>
+    <div class="tarjeta"><div class="nota">Latencia mediana</div><div class="cifra">227 ms</div></div>
+  </div>
+  <div class="cuerpo estirar"><div class="tarjeta" style="min-height:10em"><svg id="resGrafico" preserveAspectRatio="none"></svg></div></div>
+  <p class="nota">Prueba del 2 de noviembre de 2026, hora UTC. Pasa el cursor por cada cambio. Bandas: bloques de errores.</p>
+</section>
+
+<section class="slide">
+  <h2>Riesgos: impacto (I) × probabilidad (P)</h2>
+  <div class="cuerpo dos estirar">
+    <div class="matriz" id="matriz"></div>
+    <div class="tarjeta"><h3 id="riesgoTitulo"></h3><p id="riesgoPuntaje" class="nota"></p><p id="riesgoTexto" style="margin-top:.5em"></p></div>
+  </div>
+</section>
+
+<section class="slide">
+  <h2>Límites declarados</h2>
+  <div class="cuerpo dos">
+    <div class="tarjeta">
+      <h3>Lo que la prueba no demuestra</h3>
+      <ul>
+        <li><strong>Capacidad:</strong> el script envía unas 0,31 peticiones por segundo. Valida la reacción a errores, no un pico real.</li>
+        <li><strong>Seguridad:</strong> API pública, porque el script no usa autenticación.</li>
+        <li><strong>Servicios:</strong> las capacidades son respuestas simuladas.</li>
+      </ul>
+    </div>
+    <div class="tarjeta">
+      <h3>Aclaraciones</h3>
+      <ul>
+        <li>Del script solo cambió el ID de la API, en la línea 47.</li>
+        <li>Dura unos 7,5 minutos, no 6: son 140 iteraciones.</li>
+        <li>Los fallos que impiden ejecutar una Lambda degradan, pero no salen en la métrica <code>Errors</code>; los recupera el reconciliador (94 s).</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="slide portada">
+  <h1>El sistema cae por etapas y se levanta solo</h1>
+  <p class="sub">Se ganó disponibilidad; se pagó con latencia y complejidad.</p>
+  <p class="sub" style="margin-top:1em">¿Preguntas?</p>
+</section>
+
+<footer id="pie"><button id="atras" aria-label="Anterior">←</button><div id="barra"><i></i></div><span id="numero"></span><button id="adelante" aria-label="Siguiente">→</button></footer>
+<div id="tip" hidden></div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const NOMBRES = { 1: "Full", 2: "Degradado", 3: "Operación Mínima" };
+
+function botones(contenedor, items, alElegir) {
+  contenedor.replaceChildren(...items.map((it, i) => {
+    const b = document.createElement("button");
+    b.textContent = it;
+    b.addEventListener("click", () => { [...contenedor.children].forEach((c) => c.classList.toggle("activo", c === b)); alElegir(i); });
+    return b;
+  }));
+  contenedor.firstChild.click();
+}
+
+// Navegacion
+const diapositivas = [...document.querySelectorAll(".slide")];
+let actual = 0;
+function ir(n) {
+  actual = Math.max(0, Math.min(diapositivas.length - 1, n));
+  diapositivas.forEach((d, i) => d.classList.toggle("activa", i === actual));
+  $("numero").textContent = `${actual + 1} / ${diapositivas.length}`;
+  document.querySelector("#barra i").style.width = `${(actual + 1) / diapositivas.length * 100}%`;
+  history.replaceState(null, "", `#${actual + 1}`);
+  $("tip").hidden = true;
+  if (diapositivas[actual].contains($("vivoGrafico"))) conectarVivo();
+  dibujarGraficos();
+}
+$("atras").addEventListener("click", () => ir(actual - 1));
+$("adelante").addEventListener("click", () => ir(actual + 1));
+addEventListener("keydown", (e) => {
+  if (["ArrowRight", "PageDown"].includes(e.key)) ir(actual + 1);
+  else if (["ArrowLeft", "PageUp"].includes(e.key)) ir(actual - 1);
+  else if (["ArrowDown", "ArrowUp"].includes(e.key) && diapositivas[actual].contains($("arq"))) { e.preventDefault(); moverPaso(e.key === "ArrowDown" ? 1 : -1); }
+  else if (e.key === " " && e.target.tagName !== "BUTTON") { e.preventDefault(); ir(actual + 1); }
+  else if (e.key === "Home") ir(0);
+  else if (e.key === "End") ir(diapositivas.length - 1);
+  else if (e.key.toLowerCase() === "f") document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+});
+
+// Comparacion de disponibilidad
+const COMPARA = {
+  todo: { t: "Un solo modo: funciona o se cae", f: [["Errores recurrentes", "Sigue igual hasta colapsar"], ["Bajo carga", "Fallos sin mensaje claro"], ["Recuperación", "Intervención manual"], ["Lo que pierde el cliente", "Todo el servicio"]] },
+  poco: { t: "3 niveles: pierde solo lo necesario", f: [["5 errores", "Nivel 2: transacciones y monitoreo"], ["10 errores", "Nivel 3: responde con mensaje claro"], ["Recuperación", "Automática y por etapas"], ["Lo que pierde el cliente", "Primero, la analítica"]] },
+};
+function comparar(m) {
+  $("compTitulo").textContent = COMPARA[m].t;
+  $("compTabla").replaceChildren(...COMPARA[m].f.map(([a, b]) => { const f = document.createElement("tr"); for (const x of [a, b]) { const c = document.createElement("td"); c.textContent = x; f.append(c); } return f; }));
+  [...$("compara").children].forEach((b) => b.classList.toggle("activo", b.dataset.m === m));
+}
+[...$("compara").children].forEach((b) => b.addEventListener("click", () => comparar(b.dataset.m)));
+comparar("poco");
+
+// Diagrama interactivo
+const NODOS = {
+  cliente: [10, 45, 110, 62, "Cliente", ["k6 / usuarios"], "Envía GET /niveles, con ?error=true cuando el script quiere provocar un fallo."],
+  api: [165, 45, 130, 62, "API Gateway", ["REST · stage niveles", "throttling 50/100"], "Punto de entrada. Limita la tasa y usa plantillas VTL para limpiar la salida y fijar el código HTTP."],
+  sfn: [340, 45, 150, 62, "Step Functions", ["Express: enrutador", "Retry, Catch, contingencia"], "Lee el nivel y elige el servicio. Enruta sin una Lambda extra: consume 1 por petición."],
+  full: [570, 10, 180, 48, "Lambda svc-full", ["Nivel 1: todas las capacidades"], "Transacciones, analítica y monitoreo (respuestas simuladas)."],
+  deg: [570, 68, 180, 48, "Lambda svc-degradado", ["Nivel 2: lo esencial"], "Transacciones y monitoreo. Se descarta la analítica."],
+  min: [570, 126, 180, 48, "Lambda svc-minimo", ["Nivel 3: mantenimiento"], "Solo responde los dos mensajes de Nivel 3."],
+  ddb: [340, 190, 150, 62, "DynamoDB", ["nivel, errores,", "ultimo_error"], "Estado compartido. Escrituras atómicas y condicionales. Su stream activa al auditor."],
+  aud: [165, 190, 130, 62, "Lambda auditor", ["Registra cada", "NIVEL_CAMBIADO"], "Único punto que registra transiciones, con hora UTC."],
+  logs: [165, 300, 130, 62, "CloudWatch Logs", ["y dashboard", "reto3-resiliencia"], "Evidencia visible de cada cambio de nivel."],
+  met: [570, 235, 180, 62, "CloudWatch Metrics", ["Errors, Requests, ServiceLevel", "2 alarmas de recuperación"], "Los servicios publican métricas por EMF. Dos alarmas vigilan los errores."],
+  evb: [570, 345, 180, 62, "EventBridge", ["Alarma en OK", "y reconciliador cada minuto"], "Avisa al controlador. El reconciliador corrige si un aviso se pierde."],
+  ctl: [340, 345, 150, 62, "Lambda controlador", ["Sube un nivel si hay", "alarma OK y calma"], "Sube un solo nivel por ejecución y reinicia el contador."],
+};
+const FLECHAS = ["M120 76H164", "M295 76H339", "M490 66L569 36", "M490 80L569 92", "M490 94L569 148", "M415 107V189", "M339 221H296", "M230 252V299", "M756 34V212H660V234", "M660 297V344", "M569 376H491", "M415 344V253"];
+$("arq").innerHTML = `<defs><marker id="punta" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--texto-3)"/></marker></defs>`
+  + FLECHAS.map((d) => `<path class="flecha" d="${d}"/>`).join("")
+  + `<path d="M750 92H756M750 150H756M750 34H756" stroke="var(--texto-3)" fill="none"/>`
+  + Object.entries(NODOS).map(([id, [x, y, w, h, t, d]]) => `<g class="nodo${id === "ddb" ? " datos" : ""}" data-id="${id}" tabindex="0"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="5"/><text class="t" x="${x + w / 2}" y="${y + 21}">${t}</text>${d.map((l, i) => `<text class="d" x="${x + w / 2}" y="${y + 36 + i * 13}">${l}</text>`).join("")}</g>`).join("");
+
+const ESCENARIOS = [
+  ["Nivel 1 normal", [["cliente", "El cliente envía GET /niveles."], ["api", "API Gateway aplica throttling y arranca la máquina."], ["sfn", "Step Functions lee el estado."], ["ddb", "DynamoDB responde: nivel 1."], ["sfn", "El Choice elige el servicio del nivel activo."], ["full", "svc-full responde con todas las capacidades."], ["cliente", "HTTP 200: Nivel 1, servicio completo."]]],
+  ["Error en Nivel 2", [["cliente", "Llega una petición con ?error=true."], ["api", "API Gateway la pasa a la máquina."], ["sfn", "Step Functions lee el nivel."], ["ddb", "Nivel 2: el contador ya va por 9."], ["deg", "svc-degradado reporta el fallo."], ["ddb", "ADD atómico: el contador llega a 10."], ["ddb", "Escritura condicional: nivel 3."], ["aud", "El stream activa al auditor."], ["logs", "Queda registrado NIVEL_CAMBIADO 2 → 3."], ["cliente", "HTTP 500. La siguiente petición ya va a Nivel 3."]]],
+  ["Nivel 3 con error", [["cliente", "Llega otra petición con error."], ["sfn", "Step Functions lee: nivel 3."], ["min", "svc-minimo responde el mensaje de mantenimiento."], ["ddb", "El error también cuenta: no hay recuperación mientras sigan llegando."], ["cliente", "HTTP 503: Sistema bajo mantenimiento, intente más tarde."]]],
+  ["Recuperación", [["met", "Dejan de llegar errores a la métrica."], ["evb", "La alarma vuelve a OK y EventBridge reacciona."], ["ctl", "El controlador exige alarma OK y calma mínima."], ["ddb", "Sube un nivel y reinicia el contador."], ["aud", "El stream activa al auditor."], ["logs", "Queda registrado NIVEL_CAMBIADO 3 → 2."]]],
+  ["Lambda caída", [["cliente", "Llega una petición normal."], ["sfn", "Step Functions lee: nivel 1."], ["full", "svc-full no responde: Retry, 2 reintentos acotados."], ["sfn", "Catch: el Pass de contingencia responde sin Lambda."], ["ddb", "El fallo real también suma al contador."], ["cliente", "HTTP 503 con mensaje claro, en unos 3,5 s."]]],
+];
+let escenario = 0, paso = 0;
+function encender(id) { document.querySelectorAll(".nodo").forEach((n) => n.classList.toggle("encendido", n.dataset.id === id)); }
+function mostrarPaso() {
+  const pasos = ESCENARIOS[escenario][1];
+  const [id, texto] = pasos[paso];
+  encender(id);
+  $("infoTitulo").textContent = NODOS[id][4];
+  $("infoTexto").textContent = NODOS[id][6];
+  $("pasoTexto").textContent = `${paso + 1}/${pasos.length}. ${texto}`;
+  $("pasoAtras").disabled = paso === 0;
+  $("pasoAdelante").disabled = paso === pasos.length - 1;
+}
+function moverPaso(delta) {
+  paso = Math.max(0, Math.min(ESCENARIOS[escenario][1].length - 1, paso + delta));
+  mostrarPaso();
+}
+function elegirEscenario(i) { escenario = i; paso = 0; mostrarPaso(); }
+$("pasoAtras").addEventListener("click", () => moverPaso(-1));
+$("pasoAdelante").addEventListener("click", () => moverPaso(1));
+botones($("escenarios"), ESCENARIOS.map((e) => e[0]), elegirEscenario);
+document.querySelectorAll(".nodo").forEach((n) => n.addEventListener("click", () => {
+  encender(n.dataset.id);
+  $("infoTitulo").textContent = NODOS[n.dataset.id][4];
+  $("infoTexto").textContent = NODOS[n.dataset.id][6];
+}));
+
+// Simulador
+const sim = { nivel: 1, errores: 0, calma: null };
+const RESPUESTAS = {
+  1: ["200", "Nivel 1: Servicio completo", "500", "Nivel 1: Error procesando la solicitud"],
+  2: ["200", "Nivel 2: Servicio degradado", "500", "Nivel 2: Error procesando la solicitud"],
+  3: ["200", "Nivel 3: Operación al mínimo", "503", "Nivel 3: Sistema bajo mantenimiento, intente más tarde"],
+};
+function simCambio(hacia, motivo) {
+  const f = document.createElement("tr");
+  for (const x of [`${sim.nivel} → ${hacia}`, motivo]) { const c = document.createElement("td"); c.textContent = x; f.append(c); }
+  $("simLog").prepend(f);
+  $("simVacio").hidden = true;
+  sim.nivel = hacia;
+}
+function simPintar() {
+  $("simNivel").dataset.n = sim.nivel;
+  $("simIcono").textContent = sim.nivel;
+  $("simNombre").textContent = `Nivel ${sim.nivel}: ${NOMBRES[sim.nivel]}`;
+  $("simErrores").textContent = sim.errores;
+  $("simCalma").textContent = sim.calma ?? "–";
+}
+function simPeticion(error) {
+  const r = RESPUESTAS[sim.nivel];
+  $("simRespuesta").textContent = error ? `HTTP ${r[2]}: ${r[3]}` : `HTTP ${r[0]}: ${r[1]}`;
+  if (error) {
+    sim.errores += 1;
+    sim.calma = 0;
+    if (sim.errores >= 10 && sim.nivel < 3) simCambio(3, "10 errores");
+    else if (sim.errores >= 5 && sim.nivel < 2) simCambio(2, "5 errores");
+  }
+  simPintar();
+}
+function simEsperar() {
+  if (sim.calma === null) { $("simRespuesta").textContent = "Aún no hay errores: no hay nada que recuperar."; return; }
+  sim.calma += 10;
+  $("simRespuesta").textContent = "Sin peticiones durante la espera.";
+  if (sim.nivel === 3 && sim.calma >= 46) { simCambio(2, `${sim.calma} s sin errores`); sim.errores = 0; }
+  else if (sim.calma >= 73) {
+    if (sim.nivel === 2) simCambio(1, `${sim.calma} s sin errores`);
+    sim.errores = 0;
+  }
+  simPintar();
+}
+$("simOk").addEventListener("click", () => simPeticion(false));
+$("simError").addEventListener("click", () => simPeticion(true));
+$("simEspera").addEventListener("click", simEsperar);
+$("simReset").addEventListener("click", () => {
+  Object.assign(sim, { nivel: 1, errores: 0, calma: null });
+  $("simLog").replaceChildren(); $("simVacio").hidden = false;
+  $("simRespuesta").textContent = "Envía una petición.";
+  simPintar();
+});
+simPintar();
+
+// Decisiones
+const DECISIONES = [
+  ["Enrutamiento", "Step Functions Express", "Lambda router; stage variable", "Consume 1 Lambda por petición frente a 2 del router, clave con el límite de 10. La stage variable depende del plano de control."],
+  ["Detección", "Híbrida: contador para degradar, alarmas para recuperar", "Solo alarmas; contador con barrido", "Las alarmas tardan demasiado para degradar con exactitud en 5 y 10 errores. Para recuperar, ese retraso es aceptable."],
+  ["API", "REST", "HTTP API", "Sus plantillas VTL limpian la salida de Step Functions y fijan el código HTTP."],
+  ["Estado", "DynamoDB", "Variables en Lambda", "Escrituras atómicas y condicionales, estado compartido sin servidores, y Streams para el registro de cambios."],
+  ["Métricas", "EMF en alta resolución", "PutMetricData", "Se publican desde el log, sin añadir una llamada de red a cada petición."],
+  ["Despliegue", "Script con AWS CLI", "CloudFormation; SAM", "Cada recurso queda visible y el script se puede repetir. Se aceptó tener menos automatización."],
+];
+botones($("decTabs"), DECISIONES.map((d) => d[0]), (i) => {
+  const d = DECISIONES[i];
+  $("decElegida").textContent = d[1]; $("decOtras").textContent = d[2]; $("decPorque").textContent = d[3];
+});
+
+// Tacticas
+const TACTICAS = [
+  ["Detectar fallas", [["Monitor", "Alarmas de CloudWatch sobre la métrica Errors."], ["Condition Monitoring", "Umbrales de 5 y 10 errores y mínimos de calma."], ["Exception Detection", "Catch y TimeoutSeconds en cada tarea."], ["Timestamp", "NIVEL_CAMBIADO con hora UTC, además de ultimo_error."]]],
+  ["Recuperarse", [["Graceful Degradation", "Niveles 1, 2 y 3: se descartan primero las funciones menos críticas."], ["Reconfiguration", "El Choice reasigna el trabajo al servicio del nivel activo."], ["Retry", "2 reintentos acotados ante throttling o fallo de servicio de Lambda."], ["Exception Handling", "Pass de contingencia y respaldo en VTL: mensaje claro, sin colapsar."], ["Circuit Breaker (patrón)", "Nivel 3 como circuito abierto. El cierre es escalonado y exige evidencia de calma."]]],
+  ["Controlar demanda", [["Throttling / Manage Work Requests", "Límite de tasa en API Gateway para no saturar el sistema."], ["Bound Execution Times", "Timeouts de 3 s en servicios y de 2 a 4 s en tareas."]]],
+];
+botones($("tacTabs"), TACTICAS.map((t) => t[0]), (i) => {
+  $("tacFilas").replaceChildren(...TACTICAS[i][1].map(([a, b]) => { const f = document.createElement("tr"); for (const x of [a, b]) { const c = document.createElement("td"); c.textContent = x; f.append(c); } return f; }));
+});
+
+// Riesgos
+const RIESGOS = [
+  { n: "R1", i: 3, p: 2, t: "Límite de 10 Lambdas en un pico real", m: "1 Lambda por petición, throttling, Retry y contingencia. Pendiente: pedir aumento de cuota." },
+  { n: "R2", i: 3, p: 1, t: "DynamoDB como dependencia única, en una región", m: "Catch responde en contingencia. Pendiente: replicación entre regiones." },
+  { n: "R3", i: 1, p: 2, t: "Recuperación que no alcanza entre bloques (unos 9 s de margen)", m: "El sistema sigue cumpliendo; solo cambia la secuencia. Se puede acortar la alarma." },
+  { n: "R4", i: 2, p: 1, t: "Aviso de alarma perdido", m: "Reconciliador cada minuto." },
+];
+function verRiesgo(r) {
+  $("riesgoTitulo").textContent = `${r.n}. ${r.t}`;
+  $("riesgoPuntaje").textContent = `Impacto ${r.i} × Probabilidad ${r.p} = ${r.i * r.p}`;
+  $("riesgoTexto").textContent = `Mitigación: ${r.m}`;
+  document.querySelectorAll(".punto").forEach((b) => b.classList.toggle("activo", b.textContent === r.n));
+}
+for (let i = 3; i >= 1; i--) {
+  const eje = document.createElement("div"); eje.className = "eje"; eje.textContent = `I ${i}`; $("matriz").append(eje);
+  for (let p = 1; p <= 3; p++) {
+    const c = document.createElement("div"), total = i * p;
+    c.className = "celda"; c.dataset.g = total >= 6 ? "alto" : total >= 3 ? "medio" : "bajo";
+    const s = document.createElement("small"); s.textContent = total; c.append(s);
+    for (const r of RIESGOS.filter((x) => x.i === i && x.p === p)) {
+      const b = document.createElement("button"); b.className = "punto"; b.textContent = r.n;
+      b.addEventListener("click", () => verRiesgo(r)); c.append(b);
+    }
+    $("matriz").append(c);
+  }
+}
+const esquina = document.createElement("div"); esquina.className = "eje";
+$("matriz").append(esquina);
+for (const p of ["P 1", "P 2", "P 3"]) { const e = document.createElement("div"); e.className = "eje"; e.textContent = p; $("matriz").append(e); }
+verRiesgo(RIESGOS[0]);
+
+// Graficos en SVG
+function escalones(svg, cfg) {
+  const W = Math.max(svg.clientWidth, 300), H = Math.max(svg.clientHeight, 120);
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  const fuente = Math.round(parseFloat(getComputedStyle(document.body).fontSize) * 0.72);
+  const m = { l: fuente * 8, r: 14, t: 8, b: fuente + 10 };
+  const x = (v) => m.l + (v - cfg.x0) / (cfg.x1 - cfg.x0) * (W - m.l - m.r);
+  const y = (n) => m.t + (n - 0.7) / 2.6 * (H - m.t - m.b);
+  let s = "";
+  for (const [a, b] of cfg.bandas) s += `<rect x="${x(a)}" y="${m.t}" width="${x(b) - x(a)}" height="${H - m.t - m.b}" fill="var(--banda)"/>`;
+  for (const n of [1, 2, 3]) s += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(n)}" y2="${y(n)}" stroke="var(--rejilla)"/><text x="${m.l - 8}" y="${y(n) + 4}" text-anchor="end" font-size="${fuente}">${n} ${n === 3 ? "Mínimo" : NOMBRES[n]}</text>`;
+  for (const [v, t] of cfg.ejes) s += `<text x="${x(v)}" y="${H - 5}" text-anchor="middle" font-size="${fuente}">${t}</text>`;
+  if (cfg.puntos.length) {
+    let d = `M${x(cfg.puntos[0][0])} ${y(cfg.puntos[0][1])}`;
+    for (const [v, n] of cfg.puntos.slice(1)) d += `H${x(v)}V${y(n)}`;
+    s += `<path d="${d}" fill="none" stroke="var(--serie)" stroke-width="2"/>`;
+    for (const [v, n, info] of cfg.puntos) if (info) s += `<circle cx="${x(v)}" cy="${y(n)}" r="10" fill="transparent" data-info="${info}"/><circle cx="${x(v)}" cy="${y(n)}" r="4" fill="var(--serie)" stroke="var(--superficie)" stroke-width="2" pointer-events="none"/>`;
+  } else {
+    s += `<text x="${(m.l + W) / 2}" y="${H / 2}" text-anchor="middle" font-size="${fuente}">Sin datos todavía</text>`;
+  }
+  svg.innerHTML = s;
+}
+
+const seg = (h) => { const [a, b, c] = h.split(":").map(Number); return a * 3600 + b * 60 + c; };
+// Datos de docs/evidencia/k6-transiciones.jsonl
+const PRUEBA = [["16:58:14", 1, 2, 5], ["16:59:32", 2, 1, 0], ["17:00:24", 1, 2, 5], ["17:00:40", 2, 3, 10], ["17:01:45", 3, 2, 0], ["17:02:12", 2, 1, 0], ["17:02:34", 1, 2, 5], ["17:02:50", 2, 3, 10], ["17:03:55", 3, 2, 0], ["17:04:22", 2, 1, 0]];
+function dibujarResultados() {
+  const x0 = seg("16:58:00"), x1 = seg("17:05:35");
+  const puntos = [[x0, 1], ...PRUEBA.map(([h, a, b, e]) => [seg(h), b, `${h} UTC: ${a} → ${b}, contador en ${e}`]), [x1, 1]];
+  escalones($("resGrafico"), {
+    x0, x1, puntos,
+    bandas: [[seg("16:58:01"), seg("16:58:14")], [seg("17:00:11"), seg("17:00:56")], [seg("17:02:21"), seg("17:03:06")]],
+    ejes: [["16:58:00", "16:58"], ["17:00:00", "17:00"], ["17:02:00", "17:02"], ["17:04:00", "17:04"]].map(([h, t]) => [seg(h), t]),
+  });
+}
+
+let vivo = null, vivoEstado = {}, vivoPet = [], vivoTrans = [];
+function dibujarVivo() {
+  const puntos = [];
+  vivoPet.forEach((p, i) => { if (p && p.nivel) puntos.push([i, p.nivel]); });
+  escalones($("vivoGrafico"), { x0: 1, x1: 140, puntos, bandas: [[1, 5], [41, 55], [81, 95]], ejes: [1, 20, 40, 60, 80, 100, 120, 140].map((v) => [v, v]) });
+}
+function dibujarGraficos() {
+  if (diapositivas[actual].contains($("resGrafico"))) dibujarResultados();
+  if (diapositivas[actual].contains($("vivoGrafico"))) dibujarVivo();
+}
+addEventListener("resize", dibujarGraficos);
+document.addEventListener("mousemove", (e) => {
+  const info = e.target.dataset && e.target.dataset.info;
+  $("tip").hidden = !info;
+  if (info) { $("tip").textContent = info; $("tip").style.left = `${Math.min(e.clientX + 14, innerWidth - 300)}px`; $("tip").style.top = `${e.clientY + 14}px`; }
+});
+
+// Demo en vivo: mismo flujo de eventos que el panel
+function pintarVivo(texto) {
+  const e = vivoEstado, n = e.nivel;
+  $("vivoNivel").dataset.n = n ?? "";
+  $("vivoIcono").textContent = n ?? "?";
+  $("vivoNombre").textContent = n ? `Nivel ${n}: ${NOMBRES[n]}` : "Sin datos";
+  $("vivoErrores").textContent = e.errores ?? "–";
+  const al = e.alarmas || {};
+  $("vivoAlarmas").textContent = `${al["reto3-recupera-l3"] ?? "–"} / ${al["reto3-recupera-l2"] ?? "–"}`;
+  $("vivoTotal").textContent = vivoPet.filter(Boolean).length;
+  $("vivoIniciar").disabled = Boolean(e.bloqueo) || e.corriendo === undefined;
+  $("vivoDetener").hidden = !e.corriendo;
+  const seq = vivoTrans.length ? [vivoTrans[0].desde, ...vivoTrans.map((t) => t.hacia)].join(" → ") : "–";
+  $("vivoSecuencia").textContent = `Secuencia: ${seq}`;
+  if (texto) $("vivoEstado").textContent = texto;
+  else if ($("vivoDetener").disabled && e.corriendo) $("vivoEstado").textContent = "Deteniendo k6…";
+  else if (!e.corriendo) $("vivoEstado").textContent = e.bloqueo || "Listo para iniciar.";
+  else if (!vivoPet.length) $("vivoEstado").textContent = "k6 espera al segundo 00 para empezar…";
+  else if (vivoPet.filter(Boolean).length === 140) $("vivoEstado").textContent = "Peticiones completas. k6 está cerrando…";
+  else $("vivoEstado").textContent = "Prueba en curso.";
+  if (diapositivas[actual].contains($("vivoGrafico"))) dibujarVivo();
+}
+function conectarVivo() {
+  if (vivo) return;
+  vivo = new EventSource("/api/eventos");
+  vivo.addEventListener("reinicio", () => { vivoPet = []; vivoTrans = []; pintarVivo(); });
+  vivo.addEventListener("peticion", (e) => { const p = JSON.parse(e.data); vivoPet[p.iteracion] = p; pintarVivo(); });
+  vivo.addEventListener("transicion", (e) => { vivoTrans.push(JSON.parse(e.data)); vivoTrans.sort((a, b) => a.timestamp.localeCompare(b.timestamp)); pintarVivo(); });
+  vivo.addEventListener("estado", (e) => { vivoEstado = JSON.parse(e.data); pintarVivo(); });
+  vivo.addEventListener("fin", () => { $("vivoDetener").disabled = false; pintarVivo(); });
+  vivo.onerror = () => pintarVivo("Sin conexión con el panel. Usa los resultados guardados en la siguiente diapositiva.");
+}
+async function accionVivo(ruta) {
+  const r = await fetch(ruta, { method: "POST", headers: { "X-Panel": "1" } });
+  if (!r.ok) { const d = await r.json().catch(() => ({})); pintarVivo(d.error || "El panel rechazó la acción."); }
+}
+$("vivoIniciar").addEventListener("click", () => accionVivo("/api/iniciar"));
+$("vivoDetener").addEventListener("click", () => {
+  $("vivoDetener").disabled = true;
+  $("vivoEstado").textContent = "Deteniendo k6…";
+  accionVivo("/api/detener");
+});
+
+ir((parseInt(location.hash.slice(1), 10) || 1) - 1);
+</script>
+</body>
+</html>

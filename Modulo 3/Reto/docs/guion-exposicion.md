@@ -22,6 +22,8 @@ aws logs tail /aws/lambda/reto3-auditor --region us-east-1 --follow --format sho
   --filter-pattern NIVEL_CAMBIADO
 ```
 
+- Alternativa más visual: `python3 panel/servidor.py`, abre `http://127.0.0.1:8091/slides` y lanza
+  la prueba desde la diapositiva 8; el panel completo está en `http://127.0.0.1:8091`. Si recargas la página, la corrida se conserva; si reinicias el servidor, no.
 - Ten a mano el PDF y `docs/evidencia/`: son tu respaldo.
 
 ## Secuencia
